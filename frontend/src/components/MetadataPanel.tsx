@@ -23,11 +23,11 @@ function CollapsePanel({ itemKey, header, extra, open, onOpenChange, children }:
 }) {
   return <Collapsible open={open} onOpenChange={onOpenChange} data-panel={itemKey}>
     <CollapsibleTrigger className="flex min-h-[34px] w-full cursor-pointer items-center gap-1.5 bg-[#202020] px-3 py-2 text-left text-xs font-normal text-[#cecece] hover:text-foreground">
-      <Down size={12} className="transition-transform data-[panel-open]:rotate-180" />
+      <Down size={12} className="transition-transform data-[state=open]:rotate-180" />
       <span>{header}</span>
       {extra && <span className="ml-auto">{extra}</span>}
     </CollapsibleTrigger>
-    <CollapsibleContent keepMounted className="bg-[#121416]">{children}</CollapsibleContent>
+    <CollapsibleContent className="bg-[#121416]">{children}</CollapsibleContent>
   </Collapsible>;
 }
 

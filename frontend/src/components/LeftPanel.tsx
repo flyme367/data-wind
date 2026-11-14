@@ -167,14 +167,14 @@ export function SceneTreePanel({ snapshot, editing, setEditing, boardName, board
     <header className="scene-tree-heading">
       <Layers /><span className="scene-tree-title">{editing ? "组件图层" : "看板图层"}</span>
       <DropdownMenu>
-        <DropdownMenuTrigger render={<span />}>
+        <DropdownMenuTrigger asChild><span>
           <Tooltip>
-            <TooltipTrigger render={<Button variant="ghost" size="icon-sm" aria-label="过滤图层类型" />}><Filter /></TooltipTrigger>
+            <TooltipTrigger asChild><Button variant="ghost" size="icon-sm" aria-label="过滤图层类型"><Filter /></Button></TooltipTrigger>
             <TooltipContent>过滤图层类型</TooltipContent>
           </Tooltip>
-        </DropdownMenuTrigger>
+        </span></DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="scene-filter-dropdown scene-filter-menu w-auto">
-          {filterOptions.length ? filterOptions.map((label) => <DropdownMenuItem key={label} closeOnClick={false}>
+          {filterOptions.length ? filterOptions.map((label) => <DropdownMenuItem key={label} onSelect={(event) => event.preventDefault()}>
             <label className="flex cursor-pointer items-center gap-2">
               <Checkbox checked={filterKinds.includes(label)} onCheckedChange={() => toggleFilter(label)} />
               {label}
@@ -191,7 +191,7 @@ export function SceneTreePanel({ snapshot, editing, setEditing, boardName, board
       <div className="scene-tree-content text-xs" role="tree" ref={treeRef}>{data.map((item) => renderRow(item, 0))}</div>}
     {selected && <div className="tree-selection-tools">
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button size="sm" variant="ghost" aria-label="图层操作">⋯</Button>} />
+        <DropdownMenuTrigger asChild><Button size="sm" variant="ghost" aria-label="图层操作">⋯</Button></DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-auto">
           <DropdownMenuItem onClick={copySelection}>复制</DropdownMenuItem>
           <DropdownMenuItem onClick={duplicateSelection}>复制副本</DropdownMenuItem>
@@ -201,9 +201,9 @@ export function SceneTreePanel({ snapshot, editing, setEditing, boardName, board
           <DropdownMenuItem onClick={()=>deleteSelection()}>删除选中</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <Tooltip><TooltipTrigger render={<Button size="sm" variant="ghost" aria-label="切换对象可见性" onClick={() => getSceneBridge().post({ type: "toggleVisible", id: selected.id })} />}>{selected.visible ? <PreviewOpen /> : <PreviewClose />}</TooltipTrigger><TooltipContent>{selected.visible ? "隐藏" : "显示"}</TooltipContent></Tooltip>
-      <Tooltip><TooltipTrigger render={<Button size="sm" variant="ghost" aria-label="切换对象锁定" onClick={() => getSceneBridge().post({ type: "toggleLocked", id: selected.id })} />}>{selected.locked ? <Lock /> : <Unlock />}</TooltipTrigger><TooltipContent>{selected.locked ? "解锁" : "锁定"}</TooltipContent></Tooltip>
-      <Tooltip><TooltipTrigger render={<Button size="sm" variant="ghost" disabled={selected.locked} aria-label="删除选中对象" onClick={() => deleteSceneObject(selected.id)} />}><Delete /></TooltipTrigger><TooltipContent>{selected.locked ? "请先解锁对象" : "删除对象（可撤销）"}</TooltipContent></Tooltip>
+      <Tooltip><TooltipTrigger asChild><Button size="sm" variant="ghost" aria-label="切换对象可见性" onClick={() => getSceneBridge().post({ type: "toggleVisible", id: selected.id })}>{selected.visible ? <PreviewOpen /> : <PreviewClose />}</Button></TooltipTrigger><TooltipContent>{selected.visible ? "隐藏" : "显示"}</TooltipContent></Tooltip>
+      <Tooltip><TooltipTrigger asChild><Button size="sm" variant="ghost" aria-label="切换对象锁定" onClick={() => getSceneBridge().post({ type: "toggleLocked", id: selected.id })}>{selected.locked ? <Lock /> : <Unlock />}</Button></TooltipTrigger><TooltipContent>{selected.locked ? "解锁" : "锁定"}</TooltipContent></Tooltip>
+      <Tooltip><TooltipTrigger asChild><Button size="sm" variant="ghost" disabled={selected.locked} aria-label="删除选中对象" onClick={() => deleteSceneObject(selected.id)}><Delete /></Button></TooltipTrigger><TooltipContent>{selected.locked ? "请先解锁对象" : "删除对象（可撤销）"}</TooltipContent></Tooltip>
     </div>}
     <Dialog open={Boolean(rename)} onOpenChange={(open) => { if (!open) setRename(null); }}>
       <DialogContent className="sm:max-w-[360px]!">

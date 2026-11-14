@@ -37,11 +37,11 @@ export function ColorField({label,value,onChange,disabled=false}:{label:string;v
   const swatch = value === "transparent" ? "transparent" : hex;
   return <Field label={label}><span className="property-color">
     <Popover>
-      <PopoverTrigger disabled={disabled} render={
+      <PopoverTrigger asChild disabled={disabled}>
         <span className="property-color-trigger" role="button" aria-label={label}>
           <span className="property-color-fill" style={{ background: swatch }}/>
         </span>
-      } />
+      </PopoverTrigger>
       <PopoverContent align="end" className="w-52 space-y-2">
         <div className="flex items-center gap-2">
           <input type="color" aria-label={`${label} 取色`} className="size-8 shrink-0 cursor-pointer rounded border border-border bg-transparent"

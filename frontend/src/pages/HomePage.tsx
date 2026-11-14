@@ -156,10 +156,10 @@ export default function HomePage() {
           value={templateQuery} onValueChange={setTemplateQuery}
           onKeyDown={(event) => event.key === "Enter" && setSection("assets")} />
         <DropdownMenu>
-          <DropdownMenuTrigger render={<button className="workspace-account" />}>
+          <DropdownMenuTrigger asChild><button className="workspace-account">
             <Avatar size="sm"><AvatarImage src="/reference/default-avatar-classic-gray.92ab041c.svg" /><AvatarFallback>本</AvatarFallback></Avatar>
             <span>本地工作区<small>本地项目</small></span>
-          </DropdownMenuTrigger>
+          </button></DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => { window.location.hash = "#/login"; }}>短信登录</DropdownMenuItem>
             <DropdownMenuItem onClick={() => setWorkspaceInfo(true)}>工作区说明</DropdownMenuItem>
@@ -177,14 +177,14 @@ export default function HomePage() {
           <div className="project-actions">
             {section === "projects" ? <><Button onClick={() => { setTemplateId("empty"); setCreating(true); }}><Plus />新建</Button>
               <Button variant="ghost" onClick={() => { setDraft(""); setDialog({ type: "folder" }); }}><Folder />新建文件夹</Button>
-              <Tooltip><TooltipTrigger render={<Button className="import-project" variant="ghost"
-                onClick={() => fileRef.current?.click()} />}><Download />导入项目</TooltipTrigger><TooltipContent>导入已导出的 JSON 项目</TooltipContent></Tooltip></>
+              <Tooltip><TooltipTrigger asChild><Button className="import-project" variant="ghost"
+                onClick={() => fileRef.current?.click()}><Download />导入项目</Button></TooltipTrigger><TooltipContent>导入已导出的 JSON 项目</TooltipContent></Tooltip></>
               : <span className="trash-note">删除的项目保存在回收站中，可随时恢复</span>}
           </div>
           <div className="project-filter-row">
             <div className="project-breadcrumb"><button onClick={() => setFolder(null)} className={!folder ? "current" : ""}>{section === "trash" ? "回收站" : "我的项目"}</button>
               {folder && <><Right /><span className="current">{folder}</span></>}</div>
-            <div className="project-filters"><Select value={sort} onValueChange={(value) => setSort(String(value))} items={sortOptions}>
+            <div className="project-filters"><Select value={sort} onValueChange={(value) => setSort(String(value))}>
               <SelectTrigger className="w-[128px] shrink-0" size="sm" aria-label="项目排序"><SelectValue /></SelectTrigger>
               <SelectContent>{sortOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
             </Select>
@@ -197,14 +197,14 @@ export default function HomePage() {
             {filtered.map((project) => <article className="project-card" key={project.id}>
               <header><button className="project-name" title={project.name} onClick={() => openProject(project.id)}>{project.name}</button>
                 <div className="project-card-actions">
-                  <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm"
+                  <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon-sm"
                     aria-label={`${section === "trash" ? "恢复" : "删除"}${project.name}`}
-                    onClick={() => update(project.id, { trashedAt: section === "trash" ? undefined : Date.now() })} />}>{section === "trash" ? <Refresh /> : <Delete />}</TooltipTrigger>
+                    onClick={() => update(project.id, { trashedAt: section === "trash" ? undefined : Date.now() })}>{section === "trash" ? <Refresh /> : <Delete />}</Button></TooltipTrigger>
                     <TooltipContent>{section === "trash" ? "恢复" : "移入回收站"}</TooltipContent></Tooltip>
-                  <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm"
-                    aria-label={`导出${project.name}`} onClick={() => exportProject(project)} />}><Export /></TooltipTrigger><TooltipContent>导出</TooltipContent></Tooltip>
+                  <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon-sm"
+                    aria-label={`导出${project.name}`} onClick={() => exportProject(project)}><Export /></Button></TooltipTrigger><TooltipContent>导出</TooltipContent></Tooltip>
                   <DropdownMenu>
-                    <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label={`${project.name}更多设置`} />}><More /></DropdownMenuTrigger>
+                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon-sm" aria-label={`${project.name}更多设置`}><More /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => openProject(project.id)}>打开项目</DropdownMenuItem>
                       <DropdownMenuItem onClick={() => { setDraft(project.name); setDialog({ type: "rename", project }); }}>重命名</DropdownMenuItem>
@@ -250,11 +250,11 @@ export default function HomePage() {
     <Dialog open={Boolean(dialog)} onOpenChange={(open) => { if (!open) setDialog(null); }}>
       <DialogContent className="sm:max-w-[420px]!">
         <DialogHeader><DialogTitle>{dialog?.type === "folder" ? "新建文件夹" : dialog?.type === "move" ? "移动到文件夹" : "重命名项目"}</DialogTitle></DialogHeader>
-        {dialog?.type === "move" ? <Select value={draft} items={[{ value: "", label: "我的项目（根目录）" }, ...folders.map((value) => ({ value, label: value }))]}
-          onValueChange={(value) => setDraft(String(value))}>
+        {dialog?.type === "move" ? <Select value={draft || "@"}
+          onValueChange={(value) => setDraft(value === "@" ? "" : String(value))}>
           <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">我的项目（根目录）</SelectItem>
+            <SelectItem value="@">我的项目（根目录）</SelectItem>
             {folders.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
           </SelectContent>
         </Select>

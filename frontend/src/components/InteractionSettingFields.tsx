@@ -21,11 +21,11 @@ function MultiSelectField({ label, value, placeholder, options, onChange }: {
   const toggle = (optionValue: string, checked: boolean) =>
     onChange(checked ? [...value, optionValue] : value.filter(item => item !== optionValue));
   return <DropdownMenu open={open} onOpenChange={setOpen}>
-    <DropdownMenuTrigger render={<Button variant="outline" className="w-full justify-between font-normal" aria-label={label}>
+    <DropdownMenuTrigger asChild><Button variant="outline" className="w-full justify-between font-normal" aria-label={label}>
       <span className="truncate text-left text-xs">{value.length
         ? value.map(item => options.find(option => option.value === item)?.label ?? item).join("、") : placeholder ?? "请选择"}</span>
       <Down theme="outline" size={12} className="shrink-0 opacity-60"/>
-    </Button>}/>
+    </Button></DropdownMenuTrigger>
     <DropdownMenuContent align="end" className="max-h-72 overflow-y-auto">
       {options.map(option => <DropdownMenuCheckboxItem key={option.value} checked={value.includes(option.value)}
         onCheckedChange={checked => toggle(option.value, checked === true)}>{option.label}</DropdownMenuCheckboxItem>)}

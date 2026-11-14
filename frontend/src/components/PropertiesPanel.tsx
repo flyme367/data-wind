@@ -4,7 +4,8 @@ import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Switch } from "./ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Combobox, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxList, ComboboxTrigger, ComboboxValue } from "./ui/combobox";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
@@ -32,11 +33,40 @@ import { kitMetadata } from "../data/kitRuntime";
 function Panel({ header, children }: { header: string; children?: React.ReactNode }) {
   return <Collapsible defaultOpen className="properties-collapse-panel">
     <CollapsibleTrigger className="flex min-h-[34px] w-full cursor-pointer items-center gap-1.5 px-3 py-2 text-left text-xs font-normal text-[#cecece] hover:text-foreground">
-      <Down size={12} className="-rotate-90 transition-transform data-[panel-open]:rotate-0" />
+      <Down size={12} className="-rotate-90 transition-transform data-[state=open]:rotate-0" />
       {header}
     </CollapsibleTrigger>
-    <CollapsibleContent keepMounted><section className="property-section">{children}</section></CollapsibleContent>
+    <CollapsibleContent><section className="property-section">{children}</section></CollapsibleContent>
   </Collapsible>;
+}
+
+/** 模型资源可搜索下拉（Semi Select filter → shadcn 经典 Combobox 模式：Popover + Command/cmdk）。 */
+function ModelCombobox({ value, options, placeholder, disabled, onPick }: {
+  value?: string | null; options: { value: string; label: string }[]; placeholder: string; disabled?: boolean; onPick: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find(option => option.value === value);
+  return <Popover open={open} onOpenChange={setOpen}>
+    <PopoverTrigger asChild disabled={disabled}>
+      <button type="button" role="combobox" aria-expanded={open} aria-label="模型资源"
+        className="flex h-7 w-full items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent px-2.5 text-left text-xs">
+        <span className="truncate">{selected?.label ?? placeholder}</span>
+        <Down size={12} className="shrink-0 text-muted-foreground" />
+      </button>
+    </PopoverTrigger>
+    <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
+      <Command>
+        <CommandInput placeholder="搜索模型" className="h-8" />
+        <CommandList>
+          <CommandEmpty>无匹配模型</CommandEmpty>
+          <CommandGroup>
+            {options.map(option => <CommandItem key={option.value} value={`${option.label} ${option.value}`}
+              onSelect={() => { onPick(option.value); setOpen(false); }}>{option.label}</CommandItem>)}
+          </CommandGroup>
+        </CommandList>
+      </Command>
+    </PopoverContent>
+  </Popover>;
 }
 
 /** 山海鲸「默认状态」下拉：切换样式面板编辑的状态；附加状态的样式写入状态补丁，预览时由交互「切换状态」触发。 */
@@ -51,7 +81,9 @@ function StateDropdown({ node }: { node: SceneNode }) {
   const activate = (stateId: string) => setState({ editingStates: { ...state.editingStates, [node.id]: stateId } });
   return <>
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button size="sm" variant="ghost" className="state-dropdown-tag" aria-label="默认状态">{active?.name ?? "默认状态"} ▾</Button>} />
+      <DropdownMenuTrigger asChild>
+        <Button size="sm" variant="ghost" className="state-dropdown-tag" aria-label="默认状态">{active?.name ?? "默认状态"} ▾</Button>
+      </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => activate("")}>默认状态</DropdownMenuItem>
         {states.map((item) => <DropdownMenuItem key={item.id} onClick={() => activate(item.id)}>{item.id === activeId ? "● " : ""}{item.name}</DropdownMenuItem>)}
@@ -113,7 +145,9 @@ function BoardStateDropdown() {
   };
   return <>
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button size="sm" variant="ghost" className="state-dropdown-tag" aria-label="看板状态">{active?.name ?? "默认状态"} ▾</Button>} />
+      <DropdownMenuTrigger asChild>
+        <Button size="sm" variant="ghost" className="state-dropdown-tag" aria-label="看板状态">{active?.name ?? "默认状态"} ▾</Button>
+      </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => apply("")}>默认状态</DropdownMenuItem>
         {state.settings.boardStates.map((item) => <DropdownMenuItem key={item.id} onClick={() => apply(item.id)}>{item.id === active?.id ? "● " : ""}{item.name}</DropdownMenuItem>)}
@@ -183,21 +217,15 @@ export default function PropertiesPanel({editing=true, rootNode=null}:{editing?:
       <div className="property-section"><Input className="h-7 text-xs" aria-label="对象名称" value={draft} onChange={e=>setDraft(e.target.value)} disabled={node.locked} onBlur={()=>{if(draft.trim()&&draft!==node.name)post({type:"rename",id:node.id,name:draft.trim()})}} onKeyDown={e=>{if(e.key==="Enter")(e.target as HTMLInputElement).blur()}}/></div>
       {kitMetadata(node)?<KitProperties key={node.id} node={node} editStateId={state.editingStates[node.id]}/>:node.widget?<WidgetProperties node={node} editStateId={state.editingStates[node.id]}/>:<div key={node.id} className="properties-collapse">
         <Panel header="基础设置"><Field label="对象类型"><Badge className="h-5">{NODE_TYPE_LABEL[node.type]}</Badge></Field>
-          {node.type==="model"&&<><Field label="模型资源"><Combobox value={node.modelId ?? null} disabled={node.locked}
-            onValueChange={v=>{if(typeof v==="string")post({type:"replaceModel",id:node.id,modelId:v})}}>
-            <ComboboxTrigger aria-label="模型资源" className="h-7 w-full rounded-lg border border-input bg-transparent px-2.5 text-left text-xs"><ComboboxValue placeholder={node.customMesh?node.customMesh.sourceName:"基础立方体"}/></ComboboxTrigger>
-            <ComboboxContent align="start">
-              <ComboboxInput placeholder="搜索模型" showTrigger={false} className="w-[calc(100%-8px)]" />
-              <ComboboxList>
-                {[...(node.customMesh?[{value:node.modelId!,label:node.customMesh.sourceName}]:[]),...modelAssets.map(a=>({value:a.id,label:a.name}))].map(option=><ComboboxItem key={option.value} value={option.value}>{option.label}</ComboboxItem>)}
-              </ComboboxList>
-            </ComboboxContent>
-          </Combobox></Field>{resource&&<div className="selected-model-card"><img src={resource.thumbnail} alt="模型预览"/><div><span>{resource.triangles.toLocaleString()} 个三角面{resource.aiGenerated?" · AI 生成":""}</span><a href={resource.source} target="_blank" rel="noreferrer">{resource.author} · {resource.license==="CC0-1.0"?"CC0":"公有领域"}</a></div></div>}{node.customMesh&&<p className="properties-note">{node.customMesh.sourceName} · {node.customMesh.triangles.toLocaleString()} 个三角面</p>}</>}
+          {node.type==="model"&&<><Field label="模型资源"><ModelCombobox disabled={node.locked}
+            options={[...(node.customMesh?[{value:node.modelId!,label:node.customMesh.sourceName}]:[]),...modelAssets.map(a=>({value:a.id,label:a.name}))]}
+            value={node.modelId} placeholder={node.customMesh?node.customMesh.sourceName:"基础立方体"}
+            onPick={v=>post({type:"replaceModel",id:node.id,modelId:v})} /></Field>{resource&&<div className="selected-model-card"><img src={resource.thumbnail} alt="模型预览"/><div><span>{resource.triangles.toLocaleString()} 个三角面{resource.aiGenerated?" · AI 生成":""}</span><a href={resource.source} target="_blank" rel="noreferrer">{resource.author} · {resource.license==="CC0-1.0"?"CC0":"公有领域"}</a></div></div>}{node.customMesh&&<p className="properties-note">{node.customMesh.sourceName} · {node.customMesh.triangles.toLocaleString()} 个三角面</p>}</>}
           <Field label="显示对象"><Switch aria-label="显示对象" checked={node.visible} onCheckedChange={()=>post({type:"toggleVisible",id:node.id})}/></Field><Field label="锁定对象"><Button size="icon-sm" variant="ghost" aria-label="锁定对象" onClick={()=>post({type:"toggleLocked",id:node.id})}>{node.locked?<Lock/>:<Unlock/>}</Button></Field>
           <ColorField label="材质颜色" value={node.color} disabled={node.locked} onChange={color=>post({type:"color",id:node.id,color})}/>
           {node.type==="camera"&&<Button className="w-full" size="sm" onClick={()=>window.dispatchEvent(new CustomEvent("dw:camera",{detail:{cameraNode:node}}))}>使用该相机</Button>}
           {node.type==="light"&&<Field label="光照强度"><NumberInput size="small" aria-label="光照强度" min={0} max={5} step={.1} value={node.lightIntensity??1} onChange={v=>typeof v==="number"&&post({type:"patch",id:node.id,patch:{lightIntensity:v}})}/></Field>}
-          <Field label="所属分组"><Select aria-label="所属分组" value={state.scene.some(n=>n.id===node.parentId)?node.parentId:"@root"} onValueChange={v=>{if(typeof v==="string")post({type:"reparent",ids:[node.id],parentId:v==="@root"?null:v})}}>
+          <Field label="所属分组"><Select aria-label="所属分组" value={node.parentId&&state.scene.some(n=>n.id===node.parentId)?node.parentId:"@root"} onValueChange={v=>{if(typeof v==="string")post({type:"reparent",ids:[node.id],parentId:v==="@root"?null:v})}}>
             <SelectTrigger aria-label="所属分组" size="sm" className="w-full"><SelectValue/></SelectTrigger>
             <SelectContent>{[{value:"@root",label:"根图层"},...state.scene.filter(n=>n.type==="group"&&n.id!==node.id).map(n=>({value:n.id,label:n.name}))].map(option=><SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
           </Select></Field>

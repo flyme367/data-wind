@@ -136,13 +136,13 @@ export default function DataSourceEditor({ node }: { node: SceneNode }) {
   const sheetOptions = (workbook?.sheets ?? []).map((sheet, index) => ({ value: String(index), label: sheet.sheet }));
   return <div className="data-source-editor">
     <h4>数据连接</h4>
-    <Field label="来源类型"><Select items={kindOptions} value={kind} disabled={node.locked}
+    <Field label="来源类型"><Select value={kind} disabled={node.locked}
       onValueChange={(value) => { const next = value as DraftKind; if ((next === "database" || next === "webhook") && kind !== next) update({ url: DEFAULT_DB_GATEWAY }); setKind(next); setError(""); }}>
       <SelectTrigger className="w-full" size="sm" aria-label="来源类型"><SelectValue/></SelectTrigger>
       <SelectContent>{kindOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
     </Select></Field>
     {kind === "shared" && <>
-      <Field label="公共数据源"><Select items={sharedOptions} value={sharedId || null} disabled={node.locked} onValueChange={(value) => setSharedId(String(value))}>
+      <Field label="公共数据源"><Select value={sharedId || undefined} disabled={node.locked} onValueChange={(value) => setSharedId(String(value))}>
         <SelectTrigger className="w-full" size="sm" aria-label="公共数据源"><SelectValue placeholder="选择看板公共数据"/></SelectTrigger>
         <SelectContent>{sharedOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
       </Select></Field>
@@ -161,7 +161,7 @@ export default function DataSourceEditor({ node }: { node: SceneNode }) {
       <div className="data-filter-row">
         <Input className="h-7 text-xs" aria-label="条件字段" placeholder="字段，如 name" value={draft.filter?.field ?? ""} disabled={node.locked}
           onChange={(event) => { const field = event.target.value; update({ filter: field.trim() ? { field, op: draft.filter?.op ?? "==", value: draft.filter?.value ?? "" } : undefined }); }}/>
-        <Select items={opOptions} value={draft.filter?.op ?? "=="} disabled={node.locked || !draft.filter?.field}
+        <Select value={draft.filter?.op ?? "=="} disabled={node.locked || !draft.filter?.field}
           onValueChange={(op) => draft.filter && update({ filter: { ...draft.filter, op: op as DataFilterOp } })}>
           <SelectTrigger className="data-filter-op w-full" size="sm" aria-label="条件操作符"><SelectValue/></SelectTrigger>
           <SelectContent>{opOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
@@ -170,7 +170,7 @@ export default function DataSourceEditor({ node }: { node: SceneNode }) {
           onChange={(event) => draft.filter && update({ filter: { ...draft.filter, value: event.target.value } })}/>
       </div>
       {kind === "api" && <>
-        <Field label="请求方式"><Select items={methodOptions} value={draft.method} disabled={node.locked} onValueChange={(method) => update({ method: method as "GET" | "POST" })}>
+        <Field label="请求方式"><Select value={draft.method} disabled={node.locked} onValueChange={(method) => update({ method: method as "GET" | "POST" })}>
           <SelectTrigger className="w-full" size="sm" aria-label="请求方式"><SelectValue/></SelectTrigger>
           <SelectContent>{methodOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
         </Select></Field>
@@ -202,7 +202,7 @@ export default function DataSourceEditor({ node }: { node: SceneNode }) {
     <Dialog open={Boolean(workbook)} onOpenChange={(open) => { if (!open) setWorkbook(null); }}>
       <DialogContent className="sm:max-w-[440px]">
         <DialogHeader><DialogTitle>选择 Excel 工作表</DialogTitle></DialogHeader>
-        <Field label="工作表"><Select items={sheetOptions} value={String(sheetIndex)} disabled={!workbook}
+        <Field label="工作表"><Select value={String(sheetIndex)} disabled={!workbook}
           onValueChange={(value) => { selectedSheetIndex.current = Number(value); setSheetIndex(selectedSheetIndex.current); }}>
           <SelectTrigger className="w-full" size="sm" aria-label="Excel 工作表"><SelectValue/></SelectTrigger>
           <SelectContent>{sheetOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>

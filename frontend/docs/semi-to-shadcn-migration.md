@@ -11,9 +11,9 @@
 | `Input` | `@/components/ui/input` | Semi `onChange(value:string)` → React 原生 `onChange(event)` 取 `event.target.value`；`size="small"` 用 `className="h-7 text-xs"`；`prefix/suffix` 用相对定位包裹 span |
 | `TextArea` | `@/components/ui/textarea` | 同上，onChange 是 event |
 | `InputNumber` | `@/components/ui-ext/number-input` `NumberInput` | **props 与 Semi 相同**（value/onChange(number\|string)/min/max/step/precision/suffix/size="small"/hideButtons/disabled/aria-label），调用方 `typeof v==="number"` 守卫照旧 |
-| `Select` | `@/components/ui/select` | 受控：`<Select value={v} onValueChange={(val)=>set(val)}><SelectTrigger className="w-full" size="sm"/><SelectValue/><SelectContent><SelectItem value="x">…</SelectItem></SelectContent></Select>`。Semi `optionList={arr}` → 手写 SelectItem 列表；`showClear` → 加个清除小按钮或省略；多选 multiple → 见"多选"节 |
+| `Select` | `@/components/ui/select` | 受控：`<Select value={v} onValueChange={(val)=>set(val)}><SelectTrigger className="w-full" size="sm"/><SelectValue/><SelectContent><SelectItem value="x">…</SelectItem></SelectContent></Select>`。Semi `optionList={arr}` → 手写 SelectItem 列表；value 禁空串/禁 null；`showClear` → 加个清除小按钮或省略；多选 multiple → 见"多选"节 |
 | `Modal` | `@/components/ui/dialog` | `<Dialog open onOpenChange={(o)=>!o&&close()}><DialogContent className="max-w-…"><DialogHeader><DialogTitle>…</DialogTitle></DialogHeader>…<DialogFooter><Button onClick={close}>取消</Button>…</DialogFooter></DialogContent></Dialog>`；确认型危险操作用 `alert-dialog` |
-| `Toast` | `@/lib/toast` 的 `Toast` | **签名与 Semi 完全相同**（`Toast.error("msg")` / `Toast.error({content, duration:2})`），只改 import。底层是 shadcn(Base UI) toast manager（skill 规范：Base 项目用 toast 组件，不用 sonner）。测试里 `vi.mock("@douyinfe/semi-ui")` 的改为 mock `@/lib/toast` |
+| `Toast` | `@/lib/toast` 的 `Toast` | **签名与 Semi 完全相同**（`Toast.error("msg")` / `Toast.error({content, duration:2})`），只改 import。底层是 sonner（skill 规范：Radix 项目用 sonner）。测试里 `vi.mock("@douyinfe/semi-ui")` 的改为 mock `@/lib/toast` |
 | `Notification` | `@/lib/toast` 的 `Notification` | `Notification.open({id, content, duration})` / `Notification.close(id)` 签名相同（duration 缺省或 0 = 常驻） |
 | `Switch` | `@/components/ui/switch` | `checked` + `onCheckedChange(checked:boolean)`；`size="small"` 用 `className="scale-90"` 或默认尺寸 |
 | `Checkbox` | `@/components/ui/checkbox` | `checked` + `onCheckedChange(checked:boolean|'indeterminate')`，一般接 `(v)=>set(v===true)` |
@@ -39,7 +39,12 @@
 
 ## 硬性约定
 
-1. **Base UI 而非 Radix**：组合/替换元素一律 `render={<X/>}`（无 asChild）；回调名以各 ui/*.tsx 实际签名为准（select/slider/radio/tabs 用 `onValueChange`，switch/checkbox 用 `onCheckedChange`，dialog/popover/dropdown 用 `onOpenChange`，menu item 用 `onClick`）。
+1. **Radix UI**（2026-11-14 起，style=radix-nova）：触发器组合一律 `asChild`（`<DropdownMenuTrigger asChild><Button>…</Button></DropdownMenuTrigger>`，无 render prop）；回调名以各 ui/*.tsx 实际签名为准（select/slider/radio/tabs/toggle-group 用 `onValueChange`，switch/checkbox 用 `onCheckedChange`，dialog/popover/dropdown 用 `onOpenChange`，menu item 用 `onClick` 或 `onSelect`）。
+   - Select：Root `value?: string | undefined`（不可传 null，空态用 `value={x || undefined}`）；`SelectItem` 的 value **禁止空字符串**（根目录等占位用 "@" 之类哨兵值并在 onChange 里映射）；无 `items` prop，必须手写 SelectItem 列表；`<SelectValue/>` 自动显示选中项文本。
+   - ToggleGroup：单选必须 `type="single"` + `value={字符串}`，`onValueChange(value: string)`（点已选项会给 ""，需 `if (!value) return` 守卫）。
+   - Slider：`value={[v]}` 数组。
+   - Collapsible：`CollapsibleContent` 已在 ui 层默认 forceMount + `data-[state=closed]:hidden`（勿再传 keepMounted）；展开箭头用 `data-[state=open]`。
+   - Tooltip：Provider 已在 App 根包好。
 2. **弹层宽度**：Semi 默认撑满父宽的下拉，迁移后给 SelectTrigger/弹层显式 `className="w-full"`。
 3. **Toast 顶部偏移**：Toaster 已在 App 根挂载（WorkspacePage 顶部居中提示也走 sonner）。
 4. **保留业务类名**：`property-field`、`property-color-trigger` 等项目既有 CSS 钩子类名一律保留（app.css 依赖）。

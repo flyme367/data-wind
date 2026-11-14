@@ -104,8 +104,8 @@ function ChartCard({ entry }: { entry: ChartCatalogEntry }) {
  *  is-text 对齐山海鲸纯文字 chip（图表/文本/媒体/控件），默认带框（拓扑/套件）。 */
 function PaletteChips({ label, categories, chip, onChange, framed = false }:
   { label: string; categories: readonly string[]; chip: string; onChange: (next: string) => void; framed?: boolean }) {
-  return <ToggleGroup variant={framed ? "outline" : "default"} size="sm" spacing={0} aria-label={label}
-    value={[chip]} onValueChange={(next) => { const value = next[next.length - 1]; if (typeof value === "string") onChange(value); }}
+  return <ToggleGroup variant={framed ? "outline" : "default"} size="sm" spacing={0} aria-label={label} type="single"
+    value={chip} onValueChange={(next) => { if (next) onChange(next); }}
     className={`palette-chips-radio ${framed ? "is-framed" : "is-text"}`}>
     {categories.map((name) => <ToggleGroupItem key={name} value={name}>{name}</ToggleGroupItem>)}
   </ToggleGroup>;

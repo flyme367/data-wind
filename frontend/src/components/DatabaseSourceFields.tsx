@@ -112,7 +112,7 @@ export default function DatabaseSourceFields({ source, disabled, onChange }: {
     <Field label="服务令牌"><Input className="h-7 text-xs" type="password" aria-label="数据库服务令牌" value={token} disabled={disabled} onChange={(event) => { setToken(event.target.value); try { setDatabaseToken(source.url, event.target.value); } catch { /* 等待地址输入完整 */ } }}/></Field>
     <div className="database-source-actions"><Button size="sm" disabled={disabled || busy} onClick={() => void run("profiles")}>读取本机连接</Button>
       <Button size="sm" disabled={disabled || busy} onClick={() => { setProfileDraft(newProfile()); setProfileMessage(""); setCreating(true); }}>新建连接</Button></div>
-    <Field label="数据库连接"><Select items={profileOptions} value={db.profile || null} disabled={disabled}
+    <Field label="数据库连接"><Select value={db.profile || undefined} disabled={disabled}
       onValueChange={(profile) => { update({ profile: String(profile) }); setTables([]); }}>
       <SelectTrigger className="w-full" size="sm" aria-label="数据库连接"><SelectValue placeholder="读取并选择连接"/></SelectTrigger>
       <SelectContent>{profileOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
@@ -123,7 +123,7 @@ export default function DatabaseSourceFields({ source, disabled, onChange }: {
     </div>}
     <div className="database-source-actions"><Button size="sm" disabled={disabled || busy || !db.profile} onClick={() => void run("test")}>测试连接</Button>
       <Button size="sm" disabled={disabled || busy || !db.profile} onClick={() => void run("tables")}>读取表和视图</Button></div>
-    {tables.length > 0 && <Field label="表或视图"><Select items={tableOptions} value={null} disabled={disabled}
+    {tables.length > 0 && <Field label="表或视图"><Select value={undefined} disabled={disabled}
       onValueChange={(value) => { const table = tables[Number(value)], profile = profiles.find((item) => item.id === db.profile); if (!table || !profile) return;
         const quote = (part: string) => profile.type === "mysql" ? `\`${part.replaceAll("`", "``")}\`` : `"${part.replaceAll('"', '""')}"`;
         update({ sql: `SELECT * FROM ${quote(table.schema)}.${quote(table.name)}` }); }}>
@@ -151,7 +151,7 @@ export default function DatabaseSourceFields({ source, disabled, onChange }: {
         <DialogHeader><DialogTitle>{editingProfile ? "编辑数据库连接" : "新建数据库连接"}</DialogTitle></DialogHeader>
         <div className="database-source-fields">
           <Field label="连接名称"><Input aria-label="连接名称" value={profileDraft.name} onChange={(event) => updateProfile({ name: event.target.value })}/></Field>
-          <Field label="数据库类型"><Select items={typeOptions} value={profileDraft.type}
+          <Field label="数据库类型"><Select value={profileDraft.type}
             onValueChange={(value) => updateProfile({ type: value as ProfileDraft["type"], port: value === "mysql" ? 3306 : 5432 })}>
             <SelectTrigger className="w-full" aria-label="数据库类型"><SelectValue/></SelectTrigger>
             <SelectContent>{typeOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>

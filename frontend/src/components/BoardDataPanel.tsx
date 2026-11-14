@@ -165,7 +165,7 @@ export default function BoardDataPanel() {
         <div className="board-data-item-main"><strong>{item.name}</strong><small>{item.fileName ?? (item.source?.kind.toUpperCase() ?? "静态数据")}</small></div>
         <Switch size="sm" aria-label={`启用${item.name}`} checked={item.enabled} onCheckedChange={(checked) => updateSources(sources.map((sourceItem) => sourceItem.id === item.id ? { ...sourceItem, enabled: checked, source: sourceItem.source ? { ...sourceItem.source, enabled: checked } : undefined } : sourceItem))}/>
         <DropdownMenu>
-          <DropdownMenuTrigger render={<Button size="sm" variant="ghost" aria-label={`更多${item.name}操作`}/>}>⋮</DropdownMenuTrigger>
+          <DropdownMenuTrigger asChild><Button size="sm" variant="ghost" aria-label={`更多${item.name}操作`}>⋮</Button></DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => openEdit(item)}>编辑数据源</DropdownMenuItem>
             <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent("dw:refresh-data", { detail: { id: item.id } }))}>刷新数据</DropdownMenuItem>
@@ -183,7 +183,7 @@ export default function BoardDataPanel() {
       <DialogContent className="sm:max-w-[560px]">
         <DialogHeader><DialogTitle>{editingId ? "编辑公共数据" : "连接数据"}</DialogTitle></DialogHeader>
         <div className="board-data-form">
-          <Field label="来源类型"><Select items={kindOptions} value={kind}
+          <Field label="来源类型"><Select value={kind}
             onValueChange={(value) => { const next = value as DataKind; if ((next === "database" || next === "webhook") && kind !== next) setSource((current) => ({ ...current, url: DEFAULT_DB_GATEWAY })); setKind(next); }}>
             <SelectTrigger className="w-full" aria-label="来源类型"><SelectValue/></SelectTrigger>
             <SelectContent>{kindOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
@@ -201,7 +201,7 @@ export default function BoardDataPanel() {
               <Field label="轮询间隔"><NumberInput aria-label="数据库轮询间隔" min={0} max={3600000} step={1000} suffix="ms" value={source.intervalMs} onChange={(intervalMs) => typeof intervalMs === "number" && setSource((current) => ({ ...current, intervalMs }))}/></Field></>}
             {kind === "webhook" && <WebhookSourceFields source={source} onChange={(patch) => setSource((current) => ({ ...current, ...patch }))}/>}
             {kind === "api" && <>
-              <Field label="请求方式"><Select items={methodOptions} value={source.method} onValueChange={(method) => setSource((current) => ({ ...current, method: method as "GET" | "POST" }))}>
+              <Field label="请求方式"><Select value={source.method} onValueChange={(method) => setSource((current) => ({ ...current, method: method as "GET" | "POST" }))}>
                 <SelectTrigger className="w-full" aria-label="请求方式"><SelectValue/></SelectTrigger>
                 <SelectContent>{methodOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
               </Select></Field>

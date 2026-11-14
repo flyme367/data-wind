@@ -42,7 +42,7 @@ function Panel({ itemKey, header, open = false, onOpenChange, children }: {
       <span className="flex-1 text-left">{header}</span>
       <Down theme="outline" size={12} className="shrink-0 transition-transform" style={{ transform: open ? undefined : "rotate(-90deg)" }}/>
     </CollapsibleTrigger>
-    <CollapsibleContent keepMounted className="properties-collapse-content">{children}</CollapsibleContent>
+    <CollapsibleContent className="properties-collapse-content">{children}</CollapsibleContent>
   </Collapsible>;
 }
 function Panels({ defaultKeys = [], className, children }: {
@@ -66,7 +66,7 @@ function SelectField({ label, value, options, disabled, placeholder, onChange }:
   label?: string; value?: string | null; options: readonly { value: string; label: string }[];
   disabled?: boolean; placeholder?: string; onChange: (value: string) => void;
 }) {
-  return <Select value={value ?? null} onValueChange={value => typeof value === "string" && onChange(value)} disabled={disabled}>
+  return <Select value={value ?? undefined} onValueChange={value => typeof value === "string" && onChange(value)} disabled={disabled}>
     <SelectTrigger aria-label={label} size="sm" className="w-full"><SelectValue placeholder={placeholder}/></SelectTrigger>
     <SelectContent>{options.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
   </Select>;
@@ -80,11 +80,11 @@ function MultiSelect({ label, value, options, disabled, placeholder, onChange }:
   const toggle = (optionValue: string, checked: boolean) =>
     onChange(checked ? [...value ?? [], optionValue] : (value ?? []).filter(item => item !== optionValue));
   return <DropdownMenu open={open} onOpenChange={setOpen}>
-    <DropdownMenuTrigger disabled={disabled} render={<Button variant="outline" size="sm" className="w-full justify-between font-normal" aria-label={label}>
+    <DropdownMenuTrigger asChild disabled={disabled}><Button variant="outline" size="sm" className="w-full justify-between font-normal" aria-label={label}>
       <span className="truncate text-left text-xs">{value?.length
         ? value.map(item => options.find(option => option.value === item)?.label ?? item).join("、") : placeholder ?? "请选择"}</span>
       <Down theme="outline" size={12} className="shrink-0 opacity-60"/>
-    </Button>}/>
+    </Button></DropdownMenuTrigger>
     <DropdownMenuContent align="end" className="max-h-72 overflow-y-auto">
       {options.map(option => <DropdownMenuCheckboxItem key={option.value} checked={value?.includes(option.value) ?? false}
         onCheckedChange={checked => toggle(option.value, checked === true)}>{option.label}</DropdownMenuCheckboxItem>)}
@@ -297,11 +297,12 @@ function KitWeatherCityEditor({ label, value, disabled, onChange }: ValueProps) 
     setOpen(false);
   };
   return <DropdownMenu open={open} onOpenChange={setOpen}>
-    <DropdownMenuTrigger disabled={disabled} render={
+    <DropdownMenuTrigger asChild disabled={disabled}>
       <Button variant="outline" size="sm" className="w-full justify-between font-normal" aria-label={label}>
         <span className="truncate text-left text-xs">{city ? `${province?.label ?? ""} / ${city.label}` : code || "请选择省市"}</span>
         <Down theme="outline" size={12} className="shrink-0 opacity-60"/>
-      </Button>}/>
+      </Button>
+    </DropdownMenuTrigger>
     <DropdownMenuContent align="end" className="max-h-72 w-52 overflow-y-auto">
       {tree.map(item => item.children?.length
         ? <DropdownMenuSub key={item.value}>
@@ -910,8 +911,8 @@ export default function KitProperties({ node, editStateId, section = "style" }:
           else patch(key, next);
         }}/>}</Field>
       {extensible && <DropdownMenu>
-        <DropdownMenuTrigger render={<button type="button" className="kit-option-extension" disabled={node.locked}
-          aria-label={`${definition.label}扩展设置`}><MoreOne size={14}/></button>}/>
+        <DropdownMenuTrigger asChild><button type="button" className="kit-option-extension" disabled={node.locked}
+          aria-label={`${definition.label}扩展设置`}><MoreOne size={14}/></button></DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => setConditionStyle({ key, definition, base: value,
             otherwise: Object.hasOwn(settings, "otherwise") ? settings.otherwise : value,

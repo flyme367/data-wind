@@ -31,7 +31,6 @@ export default function ApiRequestOptions({ source, disabled, onChange }: {
         onClick={() => onChange({ queryParams: params.filter((_, i) => i !== index) })}>×</Button>
     </div>)}
     <Field label="认证方式"><Select value={auth.type} disabled={disabled}
-      items={[{ value: "none", label: "无认证" }, { value: "bearer", label: "Bearer Token" }, { value: "basic", label: "Basic 认证" }]}
       onValueChange={(type) => onChange({ auth: type === "bearer" ? { type: "bearer", token: "" }
         : type === "basic" ? { type: "basic", username: "", password: "" } : { type: "none" } })}>
       <SelectTrigger className="w-full" size="sm" aria-label="API 认证方式"><SelectValue /></SelectTrigger>

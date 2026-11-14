@@ -34,7 +34,7 @@ function Panel({ itemKey, header, open = false, onOpenChange, children }: {
       <span className="flex-1 text-left">{header}</span>
       <Down theme="outline" size={12} className="shrink-0 transition-transform" style={{ transform: open ? undefined : "rotate(-90deg)" }}/>
     </CollapsibleTrigger>
-    <CollapsibleContent keepMounted className="properties-collapse-content">{children}</CollapsibleContent>
+    <CollapsibleContent className="properties-collapse-content">{children}</CollapsibleContent>
   </Collapsible>;
 }
 function Panels({ defaultKeys = [], className, children }: {
@@ -222,9 +222,9 @@ export default function WidgetProperties({ node, editStateId }: { node: SceneNod
         onCheckedChange={checked => patchMapGroup("map", { showRegionNames: checked })}/></Field>
       <Field label="强制显示所有区域名称"><Switch size="sm" aria-label="强制显示所有区域名称" checked={mapGroup("map").forceShowNames === true}
         onCheckedChange={checked => patchMapGroup("map", { forceShowNames: checked })}/></Field>
-      <Field label="名称字体"><SelectField label="名称字体" value={String(nameFont?.family ?? "")}
-        options={[{ value: "", label: "系统默认字体" }, ...widgetFontFamilies.filter(f => f.value)]}
-        onChange={v => patchNameFont({ family: String(v) })}/></Field>
+      <Field label="名称字体"><SelectField label="名称字体" value={String(nameFont?.family ?? "") || "@"}
+        options={[{ value: "@", label: "系统默认字体" }, ...widgetFontFamilies.filter(f => f.value)]}
+        onChange={v => patchNameFont({ family: v === "@" ? "" : String(v) })}/></Field>
       <NumberField label="名称字号 (px)" value={Number(nameFont?.size ?? 12)} min={8} max={72} onChange={v => patchNameFont({ size: v })}/>
       <Field label="名称加粗"><Switch size="sm" aria-label="名称加粗" checked={nameFont?.bold === true}
         onCheckedChange={checked => patchNameFont({ bold: checked })}/></Field>

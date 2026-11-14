@@ -43,7 +43,7 @@ export async function captureViewport() {
 // 对齐山海鲸顶栏菜单：图标在左、文案在后的横向触发器（带下拉箭头）
 function Menu({ label, icon, children }: { label: string; icon: ReactNode; children: ReactNode }) {
   return <DropdownMenu>
-    <DropdownMenuTrigger render={<Button className="editor-menu-button" variant="ghost" size="sm">{icon}{label}<span className="menu-caret" aria-hidden /></Button>} />
+    <DropdownMenuTrigger asChild><Button className="editor-menu-button" variant="ghost" size="sm">{icon}{label}<span className="menu-caret" aria-hidden /></Button></DropdownMenuTrigger>
     <DropdownMenuContent align="start" className="w-auto">{children}</DropdownMenuContent>
   </DropdownMenu>;
 }
@@ -161,7 +161,7 @@ export default function TopMenuBar({ projectName, projectId, editing, setEditing
     </DropdownMenuSub>;
 
   return <header className="editor-header">
-    <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm" aria-label="返回工作台" onClick={goHome} />}><Left /></TooltipTrigger><TooltipContent>返回工作台</TooltipContent></Tooltip>
+    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon-sm" aria-label="返回工作台" onClick={goHome}><Left /></Button></TooltipTrigger><TooltipContent>返回工作台</TooltipContent></Tooltip>
     <Menu label="项目" icon={<AdjacentItem />}>
       <DropdownMenuItem onClick={save}>保存项目 <kbd>⌘ S</kbd></DropdownMenuItem>
       <DropdownMenuItem onClick={saveAs}>另存为...</DropdownMenuItem>
@@ -268,7 +268,7 @@ export default function TopMenuBar({ projectName, projectId, editing, setEditing
       <DialogContent className="sm:max-w-[440px]!">
         <DialogHeader><DialogTitle>测量对象距离</DialogTitle></DialogHeader>
         <div className="measure-form">{[pointA, pointB].map((value, index) => <label key={index}>{index ? "终点对象" : "起点对象"}
-          <Select value={value || null} items={state.scene.filter((n) => n.type !== "group").map((n) => ({ value: n.id, label: n.name }))}
+          <Select value={value || undefined}
             onValueChange={(next) => (index ? setPointB : setPointA)(String(next))}>
             <SelectTrigger className="w-full"><SelectValue placeholder="选择对象" /></SelectTrigger>
             <SelectContent className="w-(--anchor-width)">{state.scene.filter((n) => n.type !== "group").map((n) => <SelectItem key={n.id} value={n.id}>{n.name}</SelectItem>)}</SelectContent>

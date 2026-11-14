@@ -47,8 +47,8 @@ export default function AssetLibraryPanel({ category, libraryExpanded, onToggleL
           onClick={() => setTab("asset")}>资产库</button>
       </div>
       <div className="library-bar-actions">
-        <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm"
-          aria-label={libraryExpanded ? "收起资源库" : "展开资源库"} onClick={onToggleLibrary} />}><FullScreen /></TooltipTrigger>
+        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon-sm"
+          aria-label={libraryExpanded ? "收起资源库" : "展开资源库"} onClick={onToggleLibrary}><FullScreen /></Button></TooltipTrigger>
           <TooltipContent>{libraryExpanded ? "收起资源库" : "展开资源库"}</TooltipContent></Tooltip>
         <Button variant="ghost" size="sm" aria-label="关闭资源库" onClick={onClose}>×</Button>
       </div>

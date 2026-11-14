@@ -706,10 +706,10 @@ export default function WorkspacePage({ projectId }: { projectId: string }) {
               </div>
               <div className="asset-panel-main">
                 <header className="asset-panel-header">
-                  <ToggleGroup className="asset-theme-tabs flex" aria-label="素材库切换" value={[assetTab]}
-                    onValueChange={(values) => {
-                      const next = values[0] as typeof assetTab | undefined;
-                      if (!next) return;
+                  <ToggleGroup className="asset-theme-tabs flex" aria-label="素材库切换" type="single" value={assetTab}
+                    onValueChange={(value) => {
+                      if (!value) return;
+                      const next = value as typeof assetTab;
                       setAssetTab(next);
                       if (next === "light") setKitFamilyId("light");
                       if (next === "dark" && assetTab === "light") setKitFamilyId("free");
@@ -719,10 +719,10 @@ export default function WorkspacePage({ projectId }: { projectId: string }) {
                     <ToggleGroupItem value="asset">资产库</ToggleGroupItem>
                   </ToggleGroup>
                   <div className="asset-panel-actions">
-                    <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm"
-                      aria-label="刷新素材" onClick={() => setRefreshKey((key) => key + 1)} />}><Refresh /></TooltipTrigger><TooltipContent>刷新素材</TooltipContent></Tooltip>
-                    <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm"
-                      aria-label={libraryExpanded ? "收起素材库" : "展开素材库"} onClick={() => setLibraryExpanded(!libraryExpanded)} />}><FullScreen /></TooltipTrigger>
+                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon-sm"
+                      aria-label="刷新素材" onClick={() => setRefreshKey((key) => key + 1)}><Refresh /></Button></TooltipTrigger><TooltipContent>刷新素材</TooltipContent></Tooltip>
+                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon-sm"
+                      aria-label={libraryExpanded ? "收起素材库" : "展开素材库"} onClick={() => setLibraryExpanded(!libraryExpanded)}><FullScreen /></Button></TooltipTrigger>
                       <TooltipContent>{libraryExpanded ? "收起素材库" : "展开素材库"}</TooltipContent></Tooltip>
                   </div>
                 </header>
@@ -816,8 +816,8 @@ export default function WorkspacePage({ projectId }: { projectId: string }) {
             if (file) void addBoardBackground(file);
           }} />
         <div className={`board-toolbar-tree ${treeCollapsed ? "is-collapsed" : ""}`}>
-          <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm"
-            aria-label={treeCollapsed ? "展开图层列表" : "收起图层列表"} onClick={() => setTreeCollapsed(!treeCollapsed)} />}><Layers /></TooltipTrigger>
+          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon-sm"
+            aria-label={treeCollapsed ? "展开图层列表" : "收起图层列表"} onClick={() => setTreeCollapsed(!treeCollapsed)}><Layers /></Button></TooltipTrigger>
             <TooltipContent>{treeCollapsed ? "展开图层列表" : "收起图层列表"}</TooltipContent></Tooltip>
         </div>
         <div className={`board-toolbar-assets ${treeCollapsed ? "is-tree-collapsed" : ""}`} />
@@ -885,13 +885,13 @@ export default function WorkspacePage({ projectId }: { projectId: string }) {
               onBlur={(event) => commitZoomDraft(event.currentTarget.value)}
               onKeyDown={(event) => { if (event.key === "Enter") (event.currentTarget as HTMLInputElement).blur(); }} />
           </span>
-          <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm"
-            aria-label="最佳显示比例" onClick={() => setFit(true)} />}><FullScreen /></TooltipTrigger><TooltipContent>最佳显示比例</TooltipContent></Tooltip>
+          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon-sm"
+            aria-label="最佳显示比例" onClick={() => setFit(true)}><FullScreen /></Button></TooltipTrigger><TooltipContent>最佳显示比例</TooltipContent></Tooltip>
           <Popover open={shortcuts} onOpenChange={setShortcuts}>
-            <PopoverTrigger render={<span />}>
-              <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm"
-                aria-label="快捷键列表" aria-expanded={shortcuts} />}><Keyboard /></TooltipTrigger><TooltipContent>快捷键列表</TooltipContent></Tooltip>
-            </PopoverTrigger>
+            <PopoverTrigger asChild><span>
+              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon-sm"
+                aria-label="快捷键列表" aria-expanded={shortcuts}><Keyboard /></Button></TooltipTrigger><TooltipContent>快捷键列表</TooltipContent></Tooltip>
+            </span></PopoverTrigger>
             <PopoverContent side="top" align="end" sideOffset={8} className="w-auto min-w-0 gap-0 p-0">
               <div className="shortcut-panel" role="dialog" aria-label="快捷键列表">
                 <header className="shortcut-panel-head"><span>快捷键列表</span>
@@ -902,8 +902,8 @@ export default function WorkspacePage({ projectId }: { projectId: string }) {
               </div>
             </PopoverContent>
           </Popover>
-          <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm"
-            aria-label="调试面板" aria-pressed={debugConsoleOpen} onClick={() => setDebugConsoleOpen((open) => !open)} />}><Terminal /></TooltipTrigger><TooltipContent>调试面板</TooltipContent></Tooltip>
+          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon-sm"
+            aria-label="调试面板" aria-pressed={debugConsoleOpen} onClick={() => setDebugConsoleOpen((open) => !open)}><Terminal /></Button></TooltipTrigger><TooltipContent>调试面板</TooltipContent></Tooltip>
         </div>
         <BoardStatusBar />
       </footer>}

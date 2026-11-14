@@ -82,7 +82,7 @@ export default function DataConditionsEditor({ onClose }: { onClose: () => void 
               </div>
               {group.map((rule, index) => <div className="data-condition-rule" key={index}>
                 <span>{index ? "且" : ""}</span>
-                <Select items={sourceChoices} value={rule.sourceId} onValueChange={value => patchRule(groupIndex, index, { sourceId: String(value), field: "",
+                <Select value={rule.sourceId} onValueChange={value => patchRule(groupIndex, index, { sourceId: String(value), field: "",
                   selector: value === "$current" ? "each" : "any" })}>
                   <SelectTrigger className="w-full" size="sm" aria-label={`第${groupIndex + 1}组第${index + 1}项数据源`}><SelectValue/></SelectTrigger>
                   <SelectContent>{sourceChoices.map(item => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
@@ -93,7 +93,7 @@ export default function DataConditionsEditor({ onClose }: { onClose: () => void 
                 <datalist id={`condition-field-${groupIndex}-${index}`}>
                   {fieldsFor(rule.sourceId).map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
                 </datalist>
-                {rule.sourceId !== "builtin:project-params" && <Select items={selectors}
+                {rule.sourceId !== "builtin:project-params" && <Select
                   aria-label={`第${groupIndex + 1}组第${index + 1}项判断方式`}
                   value={rule.selector} onValueChange={selector => patchRule(groupIndex, index, { selector: selector as DataConditionRule["selector"] })}>
                   <SelectTrigger className="w-full" size="sm" aria-label={`第${groupIndex + 1}组第${index + 1}项判断方式`}><SelectValue/></SelectTrigger>
@@ -102,7 +102,7 @@ export default function DataConditionsEditor({ onClose }: { onClose: () => void 
                 {rule.selector === "index" && rule.sourceId !== "builtin:project-params" && <NumberInput size="small" min={1}
                   aria-label={`第${groupIndex + 1}组第${index + 1}项行号`} value={rule.index}
                   onChange={value => typeof value === "number" && patchRule(groupIndex, index, { index: value })}/>}
-                <Select items={operators} value={rule.operator}
+                <Select value={rule.operator}
                   onValueChange={operator => patchRule(groupIndex, index, { operator: operator as DataConditionRule["operator"] })}>
                   <SelectTrigger className="w-full" size="sm" aria-label={`第${groupIndex + 1}组第${index + 1}项条件`}><SelectValue/></SelectTrigger>
                   <SelectContent>{operators.map(item => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>

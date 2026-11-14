@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useState } from "react";
-import { Toaster } from "./components/ui/toast";
+import { Toaster } from "./components/ui/sonner";
+import { TooltipProvider } from "./components/ui/tooltip";
 import LoginPage from "./pages/LoginPage";
 import HomePage from "./pages/HomePage";
 import WorkspacePage from "./pages/WorkspacePage";
@@ -43,7 +44,7 @@ export default function App() {
   }, []);
 
   return (
-    <>
+    <TooltipProvider>
       {route.page === "login" ? <LoginPage />
         : route.page === "workspace" ? (
           // 无 projectId 时回项目工作台（与原站路由行为一致）
@@ -53,8 +54,8 @@ export default function App() {
             <HomePage />
           )
         ) : <HomePage />}
-      {/* 全局 toast（原 Semi Toast/Notification 统一入口，Base UI toast manager） */}
+      {/* 全局 toast（原 Semi Toast/Notification 统一入口，sonner 顶部居中） */}
       <Toaster />
-    </>
+    </TooltipProvider>
   );
 }

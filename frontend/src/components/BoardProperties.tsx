@@ -26,10 +26,10 @@ function Panel({ itemKey, muted, header, children, defaultOpen = false }: {
 }) {
   return <Collapsible defaultOpen={defaultOpen} data-panel={itemKey} className="board-properties-collapse">
     <CollapsibleTrigger className="flex min-h-[34px] w-full cursor-pointer items-center gap-1.5 px-3 py-2 text-left text-xs font-normal text-[#cecece] hover:text-foreground">
-      <Down size={12} className="shrink-0 transition-transform data-[panel-open]:rotate-0" />
+      <Down size={12} className="shrink-0 transition-transform data-[state=open]:rotate-0" />
       <span className={cn("board-collapse-header", muted && "is-muted")}>{header}</span>
     </CollapsibleTrigger>
-    <CollapsibleContent keepMounted><section className="property-section">{children}</section></CollapsibleContent>
+    <CollapsibleContent><section className="property-section">{children}</section></CollapsibleContent>
   </Collapsible>;
 }
 
@@ -156,11 +156,10 @@ export default function BoardProperties() {
       <Field label="子看板尺寸"><div className="board-size-inputs">{(["width", "height"] as const).map((axis) => <NumberInput key={axis} size="small" min={100} max={8192} value={state.boardSize[axis]} suffix="px" aria-label={axis === "width" ? "看板宽度" : "看板高度"} onChange={(value) => typeof value === "number" && value >= 100 && value <= 8192 && setState({ boardSize: { ...state.boardSize, [axis]: value } })}/>)}</div></Field>
       <Field label="全屏显示模式"><SelectMode value={pageSettings.boardFit} onChange={(boardFit) => update({ boardFit: boardFit as EditorSettings["boardFit"] })}/></Field>
       <ColorField label="填充颜色" value={pageSettings.boardFillColor} onChange={(boardFillColor) => update({ boardFillColor })}/>
-      <Field label="内部组件布局"><ToggleGroup className="board-segment-radio" value={settings.boardLayout ? [settings.boardLayout] : []} aria-label="内部组件布局"
-        onValueChange={(values) => {
-          const mode = values[0] as EditorSettings["boardLayout"] | undefined;
+      <Field label="内部组件布局"><ToggleGroup type="single" className="board-segment-radio" value={settings.boardLayout} aria-label="内部组件布局"
+        onValueChange={(mode) => {
           if (!mode) return;
-          update({ boardLayout: mode });
+          update({ boardLayout: mode as EditorSettings["boardLayout"] });
           if (mode === "flow") { getSceneBridge().post({ type: "flowLayout", board: state.boardSize,
             boardPageId: isBackgroundBoard ? BACKGROUND_BOARD_PAGE_ID : settings.boardActivePageId }); Toast.success("已按行列流式整理当前看板组件，可撤销"); }
         }}>
@@ -190,8 +189,8 @@ export default function BoardProperties() {
         <Button size="sm" onClick={() => backgroundInput.current?.click()}>{pageSettings.boardBackgroundMediaName || "点击选择文件"}</Button>
         {pageSettings.boardBackgroundMediaId && <Button size="sm" variant="ghost" aria-label="清除背景图或视频" onClick={() => update({ boardBackgroundMediaId: "", boardBackgroundMediaName: "" })}>清除</Button>}
       </div></Field>
-      <Field label="填充方式"><ToggleGroup className="board-fill-radio board-segment-radio" value={pageSettings.boardBackgroundFill ? [pageSettings.boardBackgroundFill] : []} aria-label="背景填充方式"
-        onValueChange={(values) => { const fill = values[0]; if (typeof fill === "string") update({ boardBackgroundFill: fill as EditorSettings["boardBackgroundFill"] }); }}>
+      <Field label="填充方式"><ToggleGroup type="single" className="board-fill-radio board-segment-radio" value={pageSettings.boardBackgroundFill} aria-label="背景填充方式"
+        onValueChange={(fill) => { if (typeof fill === "string" && fill) update({ boardBackgroundFill: fill as EditorSettings["boardBackgroundFill"] }); }}>
         <ToggleGroupItem className="h-7 text-xs" value="stretch">拉伸</ToggleGroupItem>
         <ToggleGroupItem className="h-7 text-xs" value="tile">平铺</ToggleGroupItem>
         <ToggleGroupItem className="h-7 text-xs" value="none">不填充</ToggleGroupItem>
@@ -205,7 +204,7 @@ export default function BoardProperties() {
           {pageSettings.boardMusicId && <Button size="sm" variant="ghost" aria-label="清除背景音乐" onClick={() => update({ boardMusicId: "", boardMusicName: "", boardMusicEnabled: false })}>清除</Button>}
         </div></Field>
         <Field label="网络地址"><div className="board-media-field"><Input className="h-7 text-xs" aria-label="背景音乐网络地址" value={musicUrlDraft} placeholder="https://example.com/music.mp3" onChange={(event) => setMusicUrlDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") applyMusicUrl(); }}/><Button size="sm" onClick={applyMusicUrl}>应用</Button></div></Field>
-        <Field label="音量"><Slider aria-label="背景音乐音量" min={0} max={100} value={pageSettings.boardMusicVolume} onValueChange={(value) => update({ boardMusicVolume: Number(Array.isArray(value) ? value[0] : value) })}/></Field>
+        <Field label="音量"><Slider aria-label="背景音乐音量" min={0} max={100} value={[pageSettings.boardMusicVolume]} onValueChange={(value) => update({ boardMusicVolume: Number(Array.isArray(value) ? value[0] : value) })}/></Field>
         {pageSettings.boardMusicId && <Button size="sm" onClick={() => window.dispatchEvent(new Event("dw:toggle-board-music"))}>试听 / 暂停</Button>}
         <p className="properties-note">背景音乐在预览时循环播放；浏览器可能要求先点击试听。</p>
       </div>
@@ -225,7 +224,9 @@ function SectionMenu({ name, value, onReset, boardOutline, onToggleOutline }: {
   const [confirming, setConfirming] = useState(false);
   return <span className="board-section-menu" onClick={(event) => event.stopPropagation()}>
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button size="icon-sm" variant="ghost" aria-label={`${name}更多操作`}>⋮</Button>} />
+      <DropdownMenuTrigger asChild>
+        <Button size="icon-sm" variant="ghost" aria-label={`${name}更多操作`}>⋮</Button>
+      </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => downloadFile(`${name}设置.json`, JSON.stringify(value, null, 2))}>导出本组设置 JSON</DropdownMenuItem>
         {onToggleOutline && <DropdownMenuItem onClick={onToggleOutline}>{boardOutline ? "隐藏子看板轮廓" : "显示子看板轮廓"}</DropdownMenuItem>}

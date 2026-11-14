@@ -19,7 +19,7 @@ function Panel({ itemKey, header, open = false, onOpenChange, children }: {
       <span className="flex-1 text-left">{header}</span>
       <Down theme="outline" size={12} className="shrink-0 transition-transform" style={{ transform: open ? undefined : "rotate(-90deg)" }}/>
     </CollapsibleTrigger>
-    <CollapsibleContent keepMounted className="properties-collapse-content">{children}</CollapsibleContent>
+    <CollapsibleContent className="properties-collapse-content">{children}</CollapsibleContent>
   </Collapsible>;
 }
 function Panels({ defaultKeys = [], className, children }: {

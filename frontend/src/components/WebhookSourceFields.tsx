@@ -95,7 +95,7 @@ export default function WebhookSourceFields({ source, disabled, onChange }: {
       <Button size="sm" disabled={disabled || busy} onClick={() => void readWebhooks()}>读取接收地址</Button>
       <Button size="sm" disabled={disabled || busy} onClick={openNew}>新建 Webhook</Button>
     </div>
-    <Field label="Webhook 接收"><Select items={webhookOptions} value={config?.id ?? null} disabled={disabled}
+    <Field label="Webhook 接收"><Select value={config?.id || undefined} disabled={disabled}
       onValueChange={(id) => { const webhook = webhooks.find((item) => item.id === String(id)); if (webhook) onChange({ webhook: { id: webhook.id, mode: webhook.mode, maxRows: webhook.maxRows } }); }}>
       <SelectTrigger className="w-full" size="sm" aria-label="Webhook 接收地址"><SelectValue placeholder="读取并选择接收地址"/></SelectTrigger>
       <SelectContent>{webhookOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
@@ -114,7 +114,7 @@ export default function WebhookSourceFields({ source, disabled, onChange }: {
         <DialogHeader><DialogTitle>{editing ? "编辑 Webhook 接收规则" : "新建 Webhook 接收规则"}</DialogTitle></DialogHeader>
         <div className="webhook-source-fields">
           <Field label="连接名称"><Input aria-label="Webhook 连接名称" value={draft.name} maxLength={100} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}/></Field>
-          <Field label="数据响应"><Select items={modeOptions} value={draft.mode}
+          <Field label="数据响应"><Select value={draft.mode}
             onValueChange={(mode) => setDraft((current) => ({ ...current, mode: mode as WebhookDraft["mode"] }))}>
             <SelectTrigger className="w-full" aria-label="Webhook 数据响应"><SelectValue/></SelectTrigger>
             <SelectContent>{modeOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>

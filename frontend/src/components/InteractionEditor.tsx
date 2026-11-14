@@ -95,7 +95,7 @@ export default function InteractionEditor({ node }: { node: SceneNode | null }) 
     : undefined, [isChart, node, state.liveData]);
   const itemNames = useMemo(() => chartItemNames(chartData), [chartData]);
   const itemOptions = [
-    { value: "", label: "所有项" },
+    { value: "@", label: "所有项" },
     ...itemNames.map(name => ({ value: name, label: name })),
     ...(draft.itemValue && !itemNames.includes(draft.itemValue)
       ? [{ value: draft.itemValue, label: draft.itemValue }] : []),
@@ -186,8 +186,9 @@ export default function InteractionEditor({ node }: { node: SceneNode | null }) 
   return <section className="property-section metadata-panel interaction-editor">
     <div className="interaction-heading"><h4>交互设置</h4>
       <DropdownMenu>
-        <DropdownMenuTrigger render={
-          <Button variant="ghost" size="icon-sm" aria-label="交互设置更多操作">⋮</Button>} />
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon-sm" aria-label="交互设置更多操作">⋮</Button>
+        </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem disabled={!rules.length}
             onClick={() => downloadFile("看板交互规则.json", JSON.stringify(rules, null, 2))}>导出交互规则 JSON</DropdownMenuItem>
@@ -200,8 +201,9 @@ export default function InteractionEditor({ node }: { node: SceneNode | null }) 
         <div className="interaction-rule-summary"><strong>{rule.name || "未命名交互"}</strong><span>{availableEventOptions.find((item) => item.value === rule.event)?.label ?? "未知事件"} · {actionLabel(rule.action)}</span></div>
         <div className="interaction-rule-actions"><Button variant="ghost" size="sm" disabled={locked} onClick={() => openEdit(rule)}>编辑</Button>
           <DropdownMenu>
-            <DropdownMenuTrigger render={
-              <Button variant="ghost" size="icon-sm" aria-label={`更多${rule.name}操作`}>⋮</Button>} />
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon-sm" aria-label={`更多${rule.name}操作`}>⋮</Button>
+            </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem disabled={locked} onClick={() => { const copy = { ...rule, id: crypto.randomUUID(), name: `${rule.name || "交互"} 副本` }; saveRules([...rules, copy]); }}>复制</DropdownMenuItem>
               <DropdownMenuItem variant="destructive" disabled={locked}
@@ -237,7 +239,7 @@ export default function InteractionEditor({ node }: { node: SceneNode | null }) 
             onChange={(event) => setDraft((current) => ({ ...current, triggerValue: event.target.value }))}/></Field>}
           {isChart && draft.event === "itemClick"
             ? <Field label="数据项"><Select aria-label="点击的数据项"
-              value={draft.itemValue ?? ""} onValueChange={value => updateDraft({ itemValue: String(value ?? "").slice(0, 300) })}>
+              value={draft.itemValue || "@"} onValueChange={value => updateDraft({ itemValue: (value === "@" ? "" : value).slice(0, 300) })}>
               <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>{itemOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
             </Select></Field>
@@ -265,15 +267,15 @@ export default function InteractionEditor({ node }: { node: SceneNode | null }) 
             })}
           </SelectContent>
         </Select></Field>
-        {draft.action === "boardState" && <Field label="看板状态"><SelectField label="目标看板状态" value={draft.value} options={[{ value: "", label: "默认状态" }, ...state.settings.boardStates.map((item) => ({ value: item.id, label: item.name }))]}
-          onChange={(value) => setDraft((current) => ({ ...current, value }))}/></Field>}
+        {draft.action === "boardState" && <Field label="看板状态"><SelectField label="目标看板状态" value={draft.value || "@"} options={[{ value: "@", label: "默认状态" }, ...state.settings.boardStates.map((item) => ({ value: item.id, label: item.name }))]}
+          onChange={(value) => setDraft((current) => ({ ...current, value: value === "@" ? "" : value }))}/></Field>}
         {actionsWithTarget.has(draft.action) && (draft.action !== "playEntrance" || isBoard || (draft.targetId && draft.targetId !== node?.id))
           && <Field label="目标组件"><SelectField label="目标组件" value={draft.targetId} placeholder="请选择..."
           options={(draft.action === "dialog" ? dialogTargets : targets).map((item) => ({ value: item.id, label: item.name }))}
           onChange={(targetId) => setDraft((current) => ({ ...current, targetId, ...(current.action === "state" ? { value: state.scene.find((item) => item.id === targetId)?.widget?.states?.[0]?.id ?? "" } : {}) }))}/></Field>}
-        {draft.action === "state" && <Field label="状态"><SelectField label="目标状态" value={draft.value} placeholder="选择状态"
-          options={[{ value: "", label: "默认状态" }, ...targetStates.map(item => ({ value: item.id, label: item.name }))]}
-          onChange={value => setDraft(current => ({ ...current, value }))}/></Field>}
+        {draft.action === "state" && <Field label="状态"><SelectField label="目标状态" value={draft.value || "@"} placeholder="选择状态"
+          options={[{ value: "@", label: "默认状态" }, ...targetStates.map(item => ({ value: item.id, label: item.name }))]}
+          onChange={value => setDraft(current => ({ ...current, value: value === "@" ? "" : value }))}/></Field>}
         {draft.action === "dialog" && <Field label="弹窗动作"><SelectField label="弹窗动作" value={draft.value || "toggle"}
           options={[{ value: "open", label: "打开弹窗" }, { value: "close", label: "关闭弹窗" }, { value: "toggle", label: "切换显示" }]}
           onChange={(value) => setDraft((current) => ({ ...current, value }))}/></Field>}
