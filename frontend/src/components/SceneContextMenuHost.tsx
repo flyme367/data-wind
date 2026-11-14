@@ -1,5 +1,8 @@
 import { useState, type ReactNode } from "react";
-import { Input, Modal, Toast } from "@douyinfe/semi-ui";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Toast } from "@/lib/toast";
 import { ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, Box, CirclePlus, ClipboardPaste, Copy, Eye, EyeOff,
   FolderInput, Group, Layers, Lock, LockOpen, Merge, MousePointerClick, Paintbrush, PaintBucket, PenLine,
   RotateCw, Settings, Trash2, Ungroup } from "lucide-react";
@@ -183,10 +186,15 @@ export default function SceneContextMenuHost({ rootActions }: { rootActions?: Ro
   const openRename = (node: SceneNode) => { setRename(node); setDraft(node.name); };
   return <>
     {menu && <ContextMenu key={menu.session} x={menu.x} y={menu.y} items={buildSceneContextMenu(menu.targetId, openRename, rootActions)} />}
-    <Modal title="重命名组件" visible={Boolean(rename)} onCancel={() => setRename(null)} okText="确定" cancelText="取消" width={360}
-      cancelButtonProps={{ autoFocus: false }}
-      onOk={() => { if (rename && draft.trim()) getSceneBridge().post({ type: "rename", id: rename.id, name: draft.trim() }); setRename(null); }}>
-      <Input value={draft} onChange={setDraft} autoFocus aria-label="组件名称" />
-    </Modal>
+    <Dialog open={Boolean(rename)} onOpenChange={(open) => { if (!open) setRename(null); }}>
+      <DialogContent className="sm:max-w-[360px]!">
+        <DialogHeader><DialogTitle>重命名组件</DialogTitle></DialogHeader>
+        <Input value={draft} onChange={(event) => setDraft(event.target.value)} autoFocus aria-label="组件名称" />
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setRename(null)}>取消</Button>
+          <Button onClick={() => { if (rename && draft.trim()) getSceneBridge().post({ type: "rename", id: rename.id, name: draft.trim() }); setRename(null); }}>确定</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </>;
 }

@@ -1,4 +1,4 @@
-import { Toast } from "@douyinfe/semi-ui";
+import { Toast } from "../lib/toast";
 import { BACKGROUND_BOARD_PAGE_ID, FOREGROUND_BOARD_PAGE_ID, descendants, ancestorMatches, dataAt, type Interaction, type WidgetConfig } from "../data/editor";
 import { executeBoardScript } from "../data/scriptRuntime";
 import type { SceneNode } from "../types";

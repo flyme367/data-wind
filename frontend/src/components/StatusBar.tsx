@@ -1,4 +1,4 @@
-import { Tag } from "@douyinfe/semi-ui";
+import { Badge } from "@/components/ui/badge";
 import { useStore } from "../state/store";
 
 export default function StatusBar() {
@@ -7,9 +7,9 @@ export default function StatusBar() {
 
   return (
     <footer className="flex h-7 shrink-0 items-center gap-3 border-t border-[#E8EAF0] bg-white px-3 text-[11px] text-[#646A73]">
-      <Tag size="small" color={stats.backend === "GPU" ? "green" : "grey"}>
+      <Badge variant={stats.backend === "GPU" ? "default" : "secondary"}>
         {stats.backend === "-" ? "引擎启动中…" : stats.backend}
-      </Tag>
+      </Badge>
       <span>场景 · 数字孪生园区演示</span>
       <span>网格 {hud.grid ? "开" : "关"}</span>
       <span>飞线 {hud.flylines ? "开" : "关"}</span>

@@ -35,7 +35,7 @@ function Panel({ header, children }: { header: string; children?: React.ReactNod
       <Down size={12} className="-rotate-90 transition-transform data-[panel-open]:rotate-0" />
       {header}
     </CollapsibleTrigger>
-    <CollapsibleContent><section className="property-section">{children}</section></CollapsibleContent>
+    <CollapsibleContent keepMounted><section className="property-section">{children}</section></CollapsibleContent>
   </Collapsible>;
 }
 

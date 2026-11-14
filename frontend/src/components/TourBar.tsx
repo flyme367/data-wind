@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@douyinfe/semi-ui";
+import { Button } from "@/components/ui/button";
 import type { SceneNode } from "../types";
 import { getState } from "../state/store";
 
@@ -41,10 +41,10 @@ export default function TourBar() {
       background: "rgba(10, 15, 30, .72)", border: "1px solid rgba(75, 169, 255, .35)", backdropFilter: "blur(8px)" }}>
       <span style={{ color: "#8FC7FF", fontSize: 12, letterSpacing: 2 }}>巡游</span>
       {cameras.map((node, index) => (
-        <Button key={node.id} size="small" theme={active === node.id ? "solid" : "borderless"} type="primary"
+        <Button key={node.id} size="sm" variant={active === node.id ? "default" : "ghost"}
           onClick={() => flyTo(node, index)}>{node.name}</Button>
       ))}
-      <Button size="small" theme={auto ? "solid" : "borderless"} aria-pressed={auto}
+      <Button size="sm" variant={auto ? "default" : "ghost"} aria-pressed={auto}
         onClick={() => { setAuto(!auto); if (!auto && cameras.length) flyTo(cameras[0]!, 0); }}>自动巡游</Button>
     </div>
   );

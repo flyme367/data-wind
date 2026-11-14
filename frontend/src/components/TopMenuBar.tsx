@@ -1,7 +1,16 @@
 import { exportBoardPng } from "../engine/exportBoard";
 import { canvasPng, captureSceneFrame } from "../engine/captureFrame";
 import { useRef, useState, type ReactNode } from "react";
-import { Button, Checkbox, Dropdown, Modal, Select, TextArea, Input, Toast, Tooltip } from "@douyinfe/semi-ui";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub,
+  DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip";
+import { Toast } from "@/lib/toast";
 import { AdjacentItem, Data, Click, Cube, Send, FullScreen, Left, Helpcenter } from "@icon-park/react";
 import { getState, setState, useStore } from "../state/store";
 import { copySelection, pasteSelection, deleteSelection, selectAll, selection, focusSelection } from "../state/sceneActions";
@@ -33,9 +42,10 @@ export async function captureViewport() {
 
 // 对齐山海鲸顶栏菜单：图标在左、文案在后的横向触发器（带下拉箭头）
 function Menu({ label, icon, children }: { label: string; icon: ReactNode; children: ReactNode }) {
-  return <Dropdown trigger="click" position="bottomLeft" render={<Dropdown.Menu>{children}</Dropdown.Menu>}>
-    <Button className="editor-menu-button" theme="borderless" size="small">{icon}{label}<span className="menu-caret" aria-hidden /></Button>
-  </Dropdown>;
+  return <DropdownMenu>
+    <DropdownMenuTrigger render={<Button className="editor-menu-button" variant="ghost" size="sm">{icon}{label}<span className="menu-caret" aria-hidden /></Button>} />
+    <DropdownMenuContent align="start" className="w-auto">{children}</DropdownMenuContent>
+  </DropdownMenu>;
 }
 
 export default function TopMenuBar({ projectName, projectId, editing, setEditing, preview, setPreview }: {
@@ -57,6 +67,7 @@ export default function TopMenuBar({ projectName, projectId, editing, setEditing
   const [pointA, setPointA] = useState("");
   const [pointB, setPointB] = useState("");
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [helpVisible, setHelpVisible] = useState(false);
   const [audit, setAudit] = useState<{ group: string; items: string[] }[] | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const action = (type: "undo" | "redo") => getSceneBridge().post({ type });
@@ -124,47 +135,60 @@ export default function TopMenuBar({ projectName, projectId, editing, setEditing
       { group: "数据连接异常", items: brokenData },
     ].filter((group) => group.items.length));
   };
+  // 应用场景 JSON：解析草稿、恢复看板媒体并投递给引擎（失败保持弹窗打开）
+  const applyScene = async () => {
+    try {
+      const data = parseProjectFile(sourceDraft);
+      const settings = await restoreBoardMedia(data.settings, data.boardMedia);
+      getSceneBridge().post({ type: "loadScene", tree: data.scene, settings });
+      const activePage = settings.boardPages.find((page) => page.id === settings.boardActivePageId) ?? settings.boardPages[0]!;
+      setState({ boardSize: data.boardSize ?? { width: activePage.width, height: activePage.height } });
+      setDataVisible(false);
+      Toast.success("已应用场景，可撤销");
+    } catch (e) { Toast.error(e instanceof Error ? e.message : "场景格式无效"); }
+  };
   // 操作 → 图层 / 对齐 / 排列 子菜单（对齐山海鲸主菜单结构）
   const ids = selection();
   const postAlign = (axis: 0 | 1 | 2, mode: "min" | "center" | "max" | "board" | "distribute", edge?: "min" | "center" | "max") =>
     getSceneBridge().post({ type: "align", ids, axis, mode, edge, board: { width: state.boardSize.width, height: state.boardSize.height } });
   const submenu = (label: string, disabled: boolean,
     items: { label: string; disabled?: boolean; onClick: () => void }[]) =>
-    <Dropdown trigger="hover" position="rightTop" render={<Dropdown.Menu>
-      {items.map((item) => <Dropdown.Item key={item.label} disabled={item.disabled} onClick={item.onClick}>{item.label}</Dropdown.Item>)}
-    </Dropdown.Menu>}>
-      <Dropdown.Item disabled={disabled}>{label}<span className="menu-sub-arrow">›</span></Dropdown.Item>
-    </Dropdown>;
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger disabled={disabled} className="[&>svg:last-of-type]:hidden">{label}<span className="menu-sub-arrow">›</span></DropdownMenuSubTrigger>
+      <DropdownMenuSubContent>
+        {items.map((item) => <DropdownMenuItem key={item.label} disabled={item.disabled} onClick={item.onClick}>{item.label}</DropdownMenuItem>)}
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>;
 
   return <header className="editor-header">
-    <Tooltip content="返回工作台"><span><Button theme="borderless" icon={<Left />} aria-label="返回工作台" onClick={goHome} /></span></Tooltip>
+    <Tooltip content="返回工作台"><TooltipTrigger render={<Button variant="ghost" size="icon-sm" aria-label="返回工作台" onClick={goHome} />}><Left /></TooltipTrigger></Tooltip>
     <Menu label="项目" icon={<AdjacentItem />}>
-      <Dropdown.Item onClick={save}>保存项目 <kbd>⌘ S</kbd></Dropdown.Item>
-      <Dropdown.Item onClick={saveAs}>另存为...</Dropdown.Item>
-      <Dropdown.Item onClick={()=>{setName(projectName);setRenaming(true)}}>重命名 <kbd>R</kbd></Dropdown.Item>
-      <Dropdown.Divider />
-      <Dropdown.Item onClick={exportScene}>导出项目文件</Dropdown.Item>
-      <Dropdown.Item onClick={()=>exportBoardPng().then(({embeddedPages})=>{if(embeddedPages)Toast.info("内嵌网页在图片中显示为占位卡片")}).catch((error:unknown)=>{console.error("看板导出失败",error);Toast.error(error instanceof Error?error.message:String(error))})}>导出完整看板 PNG</Dropdown.Item>
-      <Dropdown.Item onClick={() => fileRef.current?.click()}>导入场景 JSON</Dropdown.Item>
-      <Dropdown.Divider />
-      <Dropdown.Item onClick={() => setSettingsVisible(true)}>项目设置(P)...</Dropdown.Item>
-      <Dropdown.Item onClick={goHome}>关闭项目</Dropdown.Item>
+      <DropdownMenuItem onClick={save}>保存项目 <kbd>⌘ S</kbd></DropdownMenuItem>
+      <DropdownMenuItem onClick={saveAs}>另存为...</DropdownMenuItem>
+      <DropdownMenuItem onClick={()=>{setName(projectName);setRenaming(true)}}>重命名 <kbd>R</kbd></DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onClick={exportScene}>导出项目文件</DropdownMenuItem>
+      <DropdownMenuItem onClick={()=>exportBoardPng().then(({embeddedPages})=>{if(embeddedPages)Toast.info("内嵌网页在图片中显示为占位卡片")}).catch((error:unknown)=>{console.error("看板导出失败",error);Toast.error(error instanceof Error?error.message:String(error))})}>导出完整看板 PNG</DropdownMenuItem>
+      <DropdownMenuItem onClick={() => fileRef.current?.click()}>导入场景 JSON</DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onClick={() => setSettingsVisible(true)}>项目设置(P)...</DropdownMenuItem>
+      <DropdownMenuItem onClick={goHome}>关闭项目</DropdownMenuItem>
     </Menu>
     <Menu label="数据" icon={<Data />}>
-      <Dropdown.Item onClick={() => { if (!state.selectedId) Toast.info("请先选择一个组件"); else window.dispatchEvent(new Event("dw:open-data")); }}>添加数据...</Dropdown.Item>
-      <Dropdown.Item onClick={() => { window.dispatchEvent(new Event("dw:refresh-data")); Toast.info("已刷新数据连接"); }}>刷新数据 <kbd>F5</kbd></Dropdown.Item>
-      <Dropdown.Item onClick={() => setConditionsVisible(true)}>数据条件...</Dropdown.Item>
-      <Dropdown.Divider />
-      <Dropdown.Item onClick={() => {setSourceDraft(JSON.stringify({scene:state.scene,settings:state.settings,boardSize:state.boardSize},null,2));setDataVisible(true)}}>编辑场景 JSON</Dropdown.Item>
-      <Dropdown.Item onClick={exportScene}>导出 JSON 数据</Dropdown.Item>
+      <DropdownMenuItem onClick={() => { if (!state.selectedId) Toast.info("请先选择一个组件"); else window.dispatchEvent(new Event("dw:open-data")); }}>添加数据...</DropdownMenuItem>
+      <DropdownMenuItem onClick={() => { window.dispatchEvent(new Event("dw:refresh-data")); Toast.info("已刷新数据连接"); }}>刷新数据 <kbd>F5</kbd></DropdownMenuItem>
+      <DropdownMenuItem onClick={() => setConditionsVisible(true)}>数据条件...</DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onClick={() => {setSourceDraft(JSON.stringify({scene:state.scene,settings:state.settings,boardSize:state.boardSize},null,2));setDataVisible(true)}}>编辑场景 JSON</DropdownMenuItem>
+      <DropdownMenuItem onClick={exportScene}>导出 JSON 数据</DropdownMenuItem>
     </Menu>
     <Menu label="操作" icon={<Click />}>
-      <Dropdown.Item disabled={!state.canUndo} onClick={() => action("undo")}>撤销 <kbd>⌘ Z</kbd></Dropdown.Item>
-      <Dropdown.Item disabled={!state.canRedo} onClick={() => action("redo")}>恢复 <kbd>⌘ Y</kbd></Dropdown.Item>
-      <Dropdown.Item disabled={!state.selectedId} onClick={copySelection}>复制 <kbd>⌘ C</kbd></Dropdown.Item>
-      <Dropdown.Item onClick={pasteSelection}>粘贴 <kbd>⌘ V</kbd></Dropdown.Item>
-      <Dropdown.Item disabled={!state.selectedId} onClick={()=>deleteSelection()}>删除 <kbd>⌘ Backspace</kbd></Dropdown.Item>
-      <Dropdown.Item onClick={()=>selectAll(editing)}>全选 <kbd>⌘ A</kbd></Dropdown.Item>
+      <DropdownMenuItem disabled={!state.canUndo} onClick={() => action("undo")}>撤销 <kbd>⌘ Z</kbd></DropdownMenuItem>
+      <DropdownMenuItem disabled={!state.canRedo} onClick={() => action("redo")}>恢复 <kbd>⌘ Y</kbd></DropdownMenuItem>
+      <DropdownMenuItem disabled={!state.selectedId} onClick={copySelection}>复制 <kbd>⌘ C</kbd></DropdownMenuItem>
+      <DropdownMenuItem onClick={pasteSelection}>粘贴 <kbd>⌘ V</kbd></DropdownMenuItem>
+      <DropdownMenuItem disabled={!state.selectedId} onClick={()=>deleteSelection()}>删除 <kbd>⌘ Backspace</kbd></DropdownMenuItem>
+      <DropdownMenuItem onClick={()=>selectAll(editing)}>全选 <kbd>⌘ A</kbd></DropdownMenuItem>
       {submenu("图层", !ids.length, [
         { label: "置于顶层", disabled: !ids.length, onClick: () => getSceneBridge().post({ type: "reorder", ids, direction: "front" }) },
         { label: "置于底层", disabled: !ids.length, onClick: () => getSceneBridge().post({ type: "reorder", ids, direction: "back" }) },
@@ -189,62 +213,107 @@ export default function TopMenuBar({ projectName, projectId, editing, setEditing
         { label: "水平居中分布(C)", disabled: ids.length < 3, onClick: () => postAlign(0, "distribute", "center") },
         { label: "按右分布(R)", disabled: ids.length < 3, onClick: () => postAlign(0, "distribute", "max") },
       ])}
-      <Dropdown.Item disabled={state.selectedIds.length<2} onClick={()=>getSceneBridge().post({type:"group",ids:selection()})}>合并到分组 <kbd>⌘ G</kbd></Dropdown.Item>
-      <Dropdown.Item disabled={!state.selectedId} onClick={()=>getSceneBridge().post({type:"ungroup",ids:selection()})}>取消分组 <kbd>⌘ ⇧ G</kbd></Dropdown.Item>
-      <Dropdown.Item onClick={runAudit}>项目素材检查</Dropdown.Item>
-      <Dropdown.Item onClick={()=>setHistory(true)}>历史记录</Dropdown.Item>
-      <Dropdown.Divider />
-      <Dropdown.Item onClick={() => setMeasuring(true)}>测量对象距离</Dropdown.Item>
-      <Dropdown.Item onClick={() => captureViewport().catch((error: unknown) => Toast.error(error instanceof Error ? error.message : "三维截图失败"))}>视口截图</Dropdown.Item>
+      <DropdownMenuItem disabled={state.selectedIds.length<2} onClick={()=>getSceneBridge().post({type:"group",ids:selection()})}>合并到分组 <kbd>⌘ G</kbd></DropdownMenuItem>
+      <DropdownMenuItem disabled={!state.selectedId} onClick={()=>getSceneBridge().post({type:"ungroup",ids:selection()})}>取消分组 <kbd>⌘ ⇧ G</kbd></DropdownMenuItem>
+      <DropdownMenuItem onClick={runAudit}>项目素材检查</DropdownMenuItem>
+      <DropdownMenuItem onClick={()=>setHistory(true)}>历史记录</DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onClick={() => setMeasuring(true)}>测量对象距离</DropdownMenuItem>
+      <DropdownMenuItem onClick={() => captureViewport().catch((error: unknown) => Toast.error(error instanceof Error ? error.message : "三维截图失败"))}>视口截图</DropdownMenuItem>
     </Menu>
     <Menu label="3D" icon={<Cube />}>
-      <Dropdown.Item onClick={() => { setEditing(true); getSceneBridge().post({ type: "add", node: { type: "model", name: "模型", color: "#A4B7D8" } }); }}>添加3D</Dropdown.Item>
-      <Dropdown.Item onClick={() => setEditing(true)}>进入3D编辑</Dropdown.Item>
-      <Dropdown.Item onClick={() => setEditing(false)}>退出3D编辑</Dropdown.Item>
-      <Dropdown.Item onClick={()=>glbRef.current?.click()}>{importing?"正在导入…":"导入 GLB 模型"}</Dropdown.Item>
-      <Dropdown.Item onClick={()=>focusSelection()}>定位选中对象 <kbd>F</kbd></Dropdown.Item>
-      <Dropdown.Item onClick={() => window.dispatchEvent(new Event("dw:reset-camera"))}>重置视角</Dropdown.Item>
-      <Dropdown.Divider />
-      {(["grid", "flylines", "stats"] as const).map((key, index) => <Dropdown.Item key={key}
+      <DropdownMenuItem onClick={() => { setEditing(true); getSceneBridge().post({ type: "add", node: { type: "model", name: "模型", color: "#A4B7D8" } }); }}>添加3D</DropdownMenuItem>
+      <DropdownMenuItem onClick={() => setEditing(true)}>进入3D编辑</DropdownMenuItem>
+      <DropdownMenuItem onClick={() => setEditing(false)}>退出3D编辑</DropdownMenuItem>
+      <DropdownMenuItem onClick={()=>glbRef.current?.click()}>{importing?"正在导入…":"导入 GLB 模型"}</DropdownMenuItem>
+      <DropdownMenuItem onClick={()=>focusSelection()}>定位选中对象 <kbd>F</kbd></DropdownMenuItem>
+      <DropdownMenuItem onClick={() => window.dispatchEvent(new Event("dw:reset-camera"))}>重置视角</DropdownMenuItem>
+      <DropdownMenuSeparator />
+      {(["grid", "flylines", "stats"] as const).map((key, index) => <DropdownMenuItem key={key}
         onClick={() => getSceneBridge().post({type:"configure",patch:{[key]:!state.hud[key]}})}>
-        {state.hud[key] ? "✓ " : "　"}{["显示网格", "飞线动效", "性能统计"][index]}</Dropdown.Item>)}
+        {state.hud[key] ? "✓ " : "　"}{["显示网格", "飞线动效", "性能统计"][index]}</DropdownMenuItem>)}
     </Menu>
-    <Button className="editor-menu-button editor-help" theme="borderless" size="small" icon={<Helpcenter />} onClick={() => Modal.info({ title: "操作帮助", content: "Shift 点击多选；W/E/R 切换移动、旋转和缩放，拖动彩色轴修改。F 定位对象；左键空白旋转，右键平移。鼠标滚轮或触控板双指捏合缩放画布。⌘/Ctrl+C/V 复制粘贴，⌘/Ctrl+G 分组，⌘/Ctrl+Shift+G 取消分组，Delete 删除，⌘/Ctrl+Z 撤销。看板组件支持拖动及尺寸调整。" })}>操作帮助</Button>
-    <Button className="editor-title" theme="borderless" size="small" title="重命名项目" onClick={()=>{setName(projectName);setRenaming(true)}}>{projectName}</Button>
+    <Button className="editor-menu-button editor-help" variant="ghost" size="sm" onClick={() => setHelpVisible(true)}><Helpcenter data-icon="inline-start" />操作帮助</Button>
+    <Button className="editor-title" variant="ghost" size="sm" title="重命名项目" onClick={()=>{setName(projectName);setRenaming(true)}}>{projectName}</Button>
     <div className="editor-header-actions">
-      <Button size="small" theme="solid" icon={<Send />} onClick={() => { setIncludeWeatherKeys(false); setSharing(true); }}>发布</Button>
-      <Button theme="borderless" size="small" icon={<FullScreen />} onClick={() => setPreview(!preview)}>{preview ? "退出预览" : "预览"}</Button>
+      <Button size="sm" onClick={() => { setIncludeWeatherKeys(false); setSharing(true); }}><Send data-icon="inline-start" />发布</Button>
+      <Button variant="ghost" size="sm" onClick={() => setPreview(!preview)}><FullScreen data-icon="inline-start" />{preview ? "退出预览" : "预览"}</Button>
     </div>
-    <Modal title="发布项目" visible={sharing} footer={null} onCancel={() => setSharing(false)} width={440}>
-      <p className="publish-description">当前项目使用浏览器本地存储。可导出项目文件，或导出发布包将成品部署到任意静态服务器。</p>
-      {sharing && state.scene.some(node => kitMetadata(node)?.source.type === KIT_WEATHER_TYPE) &&
-        <Checkbox checked={includeWeatherKeys} onChange={event => setIncludeWeatherKeys(!!event.target.checked)}>
-          发布包包含天气 Key。页面访问者可读取该 Key。
-        </Checkbox>}
-      <div className="publish-actions"><Button onClick={exportScene}>导出项目</Button>
-        <Button onClick={exportPublish}>导出发布包</Button>
-        <Button theme="solid" onClick={openPublish}>打开发布页</Button></div>
-    </Modal>
-    <Modal title="场景数据" visible={dataVisible} onCancel={() => setDataVisible(false)} okText="应用场景" cancelText="取消" width={640} onOk={async()=>{try{const data=parseProjectFile(sourceDraft);const settings=await restoreBoardMedia(data.settings,data.boardMedia);getSceneBridge().post({type:"loadScene",tree:data.scene,settings});const activePage=settings.boardPages.find((page)=>page.id===settings.boardActivePageId)??settings.boardPages[0]!;setState({boardSize:data.boardSize??{width:activePage.width,height:activePage.height}});setDataVisible(false);Toast.success("已应用场景，可撤销")}catch(e){Toast.error(e instanceof Error?e.message:"场景格式无效")}}}>
-      <TextArea value={sourceDraft} onChange={setSourceDraft} rows={18} aria-label="场景 JSON 数据" spellCheck={false}/>
-    </Modal>
-    <Modal title="测量对象距离" visible={measuring} onCancel={() => setMeasuring(false)} footer={null} width={440}>
-      <div className="measure-form">{[pointA, pointB].map((value, index) => <label key={index}>{index ? "终点对象" : "起点对象"}
-        <Select value={value || undefined} placeholder="选择对象" style={{ width: "100%" }} optionList={state.scene.filter((n) => n.type !== "group").map((n) => ({ value: n.id, label: n.name }))}
-          onChange={(next) => (index ? setPointB : setPointA)(String(next))} /></label>)}
-        <output>{distance === null ? "选择两个对象进行测量" : `${distance.toFixed(2)} 米`}</output></div>
-    </Modal>
-    <Modal title="项目素材检查" visible={audit !== null} footer={null} onCancel={() => setAudit(null)} width={440}>
-      {audit?.length ? <ul className="audit-list">{audit.map((group) => <li key={group.group}>
-        <strong>{group.group}（{group.items.length}）</strong>
-        <p>{group.items.join("、")}</p></li>)}</ul>
-        : <p className="properties-note">检查通过：未发现缺失资源或异常数据连接。</p>}
-    </Modal>
-    <Modal title="项目设置" visible={settingsVisible} footer={null} onCancel={() => setSettingsVisible(false)} width={420}>
-      <SceneSettings />
-    </Modal>
-    <Modal title="重命名项目" visible={renaming} onCancel={()=>setRenaming(false)} okText="确定" cancelText="取消" width={360} onOk={()=>{if(!name.trim())return;saveProjects(loadProjects().map(p=>p.id===projectId?{...p,name:name.trim()}:p));window.dispatchEvent(new Event("dw:project-name"));setRenaming(false)}}><Input aria-label="项目名称" value={name} onChange={setName} maxLength={80}/></Modal>
-    <Modal title="历史记录" visible={history} footer={null} onCancel={()=>setHistory(false)} width={380}><div className="history-actions"><Button disabled={!state.canUndo} onClick={()=>action("undo")}>撤销上一步</Button><Button disabled={!state.canRedo} onClick={()=>action("redo")}>重做下一步</Button></div><ol className="history-list">{(getSceneBridge().snapshot()?.undoLabels??[]).map((label,index)=><li key={index}>{index+1}. {label}<span>已应用</span></li>)}{[...(getSceneBridge().snapshot()?.redoLabels??[])].reverse().map((label,index)=><li className="undone" key={`redo-${index}`}>{label}<span>已撤销</span></li>)}</ol></Modal>
+    <Dialog open={sharing} onOpenChange={(open) => { if (!open) setSharing(false); }}>
+      <DialogContent className="sm:max-w-[440px]!">
+        <DialogHeader><DialogTitle>发布项目</DialogTitle></DialogHeader>
+        <p className="publish-description">当前项目使用浏览器本地存储。可导出项目文件，或导出发布包将成品部署到任意静态服务器。</p>
+        {sharing && state.scene.some(node => kitMetadata(node)?.source.type === KIT_WEATHER_TYPE) &&
+          <label className="flex cursor-pointer items-start gap-2 text-sm">
+            <Checkbox checked={includeWeatherKeys} onCheckedChange={(checked) => setIncludeWeatherKeys(checked === true)} />
+            发布包包含天气 Key。页面访问者可读取该 Key。
+          </label>}
+        <div className="publish-actions"><Button variant="outline" onClick={exportScene}>导出项目</Button>
+          <Button variant="outline" onClick={exportPublish}>导出发布包</Button>
+          <Button onClick={openPublish}>打开发布页</Button></div>
+      </DialogContent>
+    </Dialog>
+    <Dialog open={dataVisible} onOpenChange={(open) => { if (!open) setDataVisible(false); }}>
+      <DialogContent className="sm:max-w-[640px]!">
+        <DialogHeader><DialogTitle>场景数据</DialogTitle></DialogHeader>
+        <Textarea value={sourceDraft} onChange={(event) => setSourceDraft(event.target.value)} rows={18}
+          className="h-[420px] max-h-[60vh]" aria-label="场景 JSON 数据" spellCheck={false} />
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setDataVisible(false)}>取消</Button>
+          <Button onClick={applyScene}>应用场景</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    <Dialog open={measuring} onOpenChange={(open) => { if (!open) setMeasuring(false); }}>
+      <DialogContent className="sm:max-w-[440px]!">
+        <DialogHeader><DialogTitle>测量对象距离</DialogTitle></DialogHeader>
+        <div className="measure-form">{[pointA, pointB].map((value, index) => <label key={index}>{index ? "终点对象" : "起点对象"}
+          <Select value={value || null} items={state.scene.filter((n) => n.type !== "group").map((n) => ({ value: n.id, label: n.name }))}
+            onValueChange={(next) => (index ? setPointB : setPointA)(String(next))}>
+            <SelectTrigger className="w-full"><SelectValue placeholder="选择对象" /></SelectTrigger>
+            <SelectContent className="w-(--anchor-width)">{state.scene.filter((n) => n.type !== "group").map((n) => <SelectItem key={n.id} value={n.id}>{n.name}</SelectItem>)}</SelectContent>
+          </Select></label>)}
+          <output>{distance === null ? "选择两个对象进行测量" : `${distance.toFixed(2)} 米`}</output></div>
+      </DialogContent>
+    </Dialog>
+    <Dialog open={audit !== null} onOpenChange={(open) => { if (!open) setAudit(null); }}>
+      <DialogContent className="sm:max-w-[440px]!">
+        <DialogHeader><DialogTitle>项目素材检查</DialogTitle></DialogHeader>
+        {audit?.length ? <ul className="audit-list">{audit.map((group) => <li key={group.group}>
+          <strong>{group.group}（{group.items.length}）</strong>
+          <p>{group.items.join("、")}</p></li>)}</ul>
+          : <p className="properties-note">检查通过：未发现缺失资源或异常数据连接。</p>}
+      </DialogContent>
+    </Dialog>
+    <Dialog open={settingsVisible} onOpenChange={(open) => { if (!open) setSettingsVisible(false); }}>
+      <DialogContent className="sm:max-w-[420px]!">
+        <DialogHeader><DialogTitle>项目设置</DialogTitle></DialogHeader>
+        <SceneSettings />
+      </DialogContent>
+    </Dialog>
+    <Dialog open={renaming} onOpenChange={(open) => { if (!open) setRenaming(false); }}>
+      <DialogContent className="sm:max-w-[360px]!">
+        <DialogHeader><DialogTitle>重命名项目</DialogTitle></DialogHeader>
+        <Input aria-label="项目名称" value={name} onChange={(event) => setName(event.target.value)} maxLength={80} />
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setRenaming(false)}>取消</Button>
+          <Button onClick={()=>{if(!name.trim())return;saveProjects(loadProjects().map(p=>p.id===projectId?{...p,name:name.trim()}:p));window.dispatchEvent(new Event("dw:project-name"));setRenaming(false)}}>确定</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    <Dialog open={helpVisible} onOpenChange={(open) => { if (!open) setHelpVisible(false); }}>
+      <DialogContent className="sm:max-w-[440px]!">
+        <DialogHeader><DialogTitle>操作帮助</DialogTitle></DialogHeader>
+        <p className="text-sm leading-6">Shift 点击多选；W/E/R 切换移动、旋转和缩放，拖动彩色轴修改。F 定位对象；左键空白旋转，右键平移。鼠标滚轮或触控板双指捏合缩放画布。⌘/Ctrl+C/V 复制粘贴，⌘/Ctrl+G 分组，⌘/Ctrl+Shift+G 取消分组，Delete 删除，⌘/Ctrl+Z 撤销。看板组件支持拖动及尺寸调整。</p>
+      </DialogContent>
+    </Dialog>
+    <Dialog open={history} onOpenChange={(open) => { if (!open) setHistory(false); }}>
+      <DialogContent className="sm:max-w-[380px]!">
+        <DialogHeader><DialogTitle>历史记录</DialogTitle></DialogHeader>
+        <div className="history-actions"><Button size="sm" variant="outline" disabled={!state.canUndo} onClick={()=>action("undo")}>撤销上一步</Button><Button size="sm" variant="outline" disabled={!state.canRedo} onClick={()=>action("redo")}>重做下一步</Button></div>
+        <ol className="history-list">{(getSceneBridge().snapshot()?.undoLabels??[]).map((label,index)=><li key={index}>{index+1}. {label}<span>已应用</span></li>)}{[...(getSceneBridge().snapshot()?.redoLabels??[])].reverse().map((label,index)=><li className="undone" key={`redo-${index}`}>{label}<span>已撤销</span></li>)}</ol>
+      </DialogContent>
+    </Dialog>
     <input hidden ref={glbRef} type="file" accept=".glb,model/gltf-binary" aria-label="导入 GLB 文件" onChange={async event=>{const file=event.target.files?.[0];if(!file)return;setImporting(true);try{if(file.size>20_000_000)throw new Error("请选择小于 20 MB 的 GLB");const node=importGlb(await file.arrayBuffer(),file.name);setEditing(true);getSceneBridge().post({type:"add",node});Toast.success("GLB 已导入，支持随项目导出")}catch(e){Toast.error(e instanceof Error?e.message:"模型导入失败")}finally{setImporting(false);event.target.value=""}}}/>
     <input hidden ref={fileRef} type="file" accept=".json,application/json" onChange={async (event) => {
       const file = event.target.files?.[0]; if (!file) return;

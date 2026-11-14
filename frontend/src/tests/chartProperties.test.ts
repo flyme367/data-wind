@@ -11,20 +11,76 @@ import type { SceneNode } from "../types";
 vi.mock("../state/store", () => ({ useStore: () => ({ scene: [], liveData: {} }) }));
 vi.mock("../workers/bridge", () => ({ getSceneBridge: () => ({ post: vi.fn() }) }));
 vi.mock("../engine/exportBoard", () => ({ captureWidgetCover: vi.fn() }));
-vi.mock("@icon-park/react", () => ({ Camera: () => null, Delete: () => null, Lock: () => null, Unlock: () => null }));
-vi.mock("@douyinfe/semi-ui", async () => {
+vi.mock("@icon-park/react", () => ({
+  Camera: () => null, Close: () => null, Delete: () => null, DeleteTwo: () => null, Down: () => null,
+  Drag: () => null, Lock: () => null, MoreOne: () => null, Plus: () => null, Search: () => null,
+  Strikethrough: () => null, TextItalic: () => null, TextUnderline: () => null, Unlock: () => null, Upload: () => null,
+}));
+// 组件已迁移到 shadcn；测试渲染为静态 markup，这里把用到的 ui 模块整体 stub 成纯 div，
+// 避免 Base UI 弹层/Portal 在 SSR 场景下的行为干扰断言。vi.mock 工厂会被提升，
+// 每个工厂必须自包含（内联 createElement/element），不能引用顶层变量。
+vi.mock("['@/components/ui/button']", async () => {
   const { createElement } = await import("react");
   const element = ({ children }: { children?: React.ReactNode }) => createElement("div", null, children);
-  const collapse = Object.assign(element, { Panel: ({ header, children }: {
-    header: React.ReactNode; children?: React.ReactNode;
-  }) => createElement("div", null, createElement("span", null, header), children) });
-  const dropdown = Object.assign(element, { Menu: element, Item: element });
-  const colorPicker = Object.assign(element, { colorStringToValue: (value: string) => ({ hex: value }) });
-  return { Cascader: element, Collapse: collapse, Button: element, Input: element, InputNumber: element,
-    Select: element, Switch: element, Tag: element, TextArea: element, Radio: element, RadioGroup: element,
-    Dropdown: dropdown, Modal: element, Slider: element, ColorPicker: colorPicker,
-    Toast: { info: vi.fn(), error: vi.fn(), warning: vi.fn() } };
+  return { Button: element };
 });
+vi.mock("['@/components/ui/badge']", async () => {
+  const { createElement } = await import("react");
+  const element = ({ children }: { children?: React.ReactNode }) => createElement("div", null, children);
+  return { Badge: element };
+});
+vi.mock("['@/components/ui/collapsible']", async () => {
+  const { createElement } = await import("react");
+  const element = ({ children }: { children?: React.ReactNode }) => createElement("div", null, children);
+  return { Collapsible, CollapsibleTrigger, CollapsibleContent: element };
+});
+vi.mock("['@/components/ui/input']", async () => {
+  const { createElement } = await import("react");
+  const element = ({ children }: { children?: React.ReactNode }) => createElement("div", null, children);
+  return { Input: element };
+});
+vi.mock("['@/components/ui/select']", async () => {
+  const { createElement } = await import("react");
+  const element = ({ children }: { children?: React.ReactNode }) => createElement("div", null, children);
+  return { Select, SelectContent, SelectItem, SelectTrigger, SelectValue: element };
+});
+vi.mock("['@/components/ui/switch']", async () => {
+  const { createElement } = await import("react");
+  const element = ({ children }: { children?: React.ReactNode }) => createElement("div", null, children);
+  return { Switch: element };
+});
+vi.mock("['@/components/ui/textarea']", async () => {
+  const { createElement } = await import("react");
+  const element = ({ children }: { children?: React.ReactNode }) => createElement("div", null, children);
+  return { Textarea: element };
+});
+vi.mock("['@/components/ui/dialog']", async () => {
+  const { createElement } = await import("react");
+  const element = ({ children }: { children?: React.ReactNode }) => createElement("div", null, children);
+  return { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle: element };
+});
+vi.mock("['@/components/ui/dropdown-menu']", async () => {
+  const { createElement } = await import("react");
+  const element = ({ children }: { children?: React.ReactNode }) => createElement("div", null, children);
+  return { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger: element };
+});
+vi.mock("['@/components/ui/radio-group']", async () => {
+  const { createElement } = await import("react");
+  const element = ({ children }: { children?: React.ReactNode }) => createElement("div", null, children);
+  return { RadioGroup, RadioGroupItem: element };
+});
+vi.mock("['@/components/ui/slider']", async () => {
+  const { createElement } = await import("react");
+  const element = ({ children }: { children?: React.ReactNode }) => createElement("div", null, children);
+  return { Slider: element };
+});
+vi.mock("['@/components/ui-ext/number-input']", async () => {
+  const { createElement } = await import("react");
+  const element = ({ children }: { children?: React.ReactNode }) => createElement("div", null, children);
+  return { NumberInput: element };
+});
+vi.mock("@/lib/toast", () => ({ Toast: { info: vi.fn(), error: vi.fn(), warning: vi.fn(), success: vi.fn() } }));
+
 
 describe("图表属性菜单", () => {
   it("天气选项关闭后仍能重新开启，Key 列表可逐项编辑", () => {

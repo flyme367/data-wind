@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SceneNode } from "../types";
 
-vi.mock("@douyinfe/semi-ui", () => ({ Toast: { success: vi.fn(), info: vi.fn(), error: vi.fn() } }));
+vi.mock("../lib/toast", () => ({ Toast: { success: vi.fn(), info: vi.fn(), error: vi.fn() } }));
 
 class FakeWorker {
   static instance: FakeWorker;

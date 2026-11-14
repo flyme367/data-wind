@@ -29,7 +29,7 @@ function Panel({ itemKey, muted, header, children, defaultOpen = false }: {
       <Down size={12} className="shrink-0 transition-transform data-[panel-open]:rotate-0" />
       <span className={cn("board-collapse-header", muted && "is-muted")}>{header}</span>
     </CollapsibleTrigger>
-    <CollapsibleContent><section className="property-section">{children}</section></CollapsibleContent>
+    <CollapsibleContent keepMounted><section className="property-section">{children}</section></CollapsibleContent>
   </Collapsible>;
 }
 

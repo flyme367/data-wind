@@ -23,7 +23,7 @@ function CollapsePanel({ itemKey, header, extra, open, onOpenChange, children }:
       <span>{header}</span>
       {extra && <span className="ml-auto">{extra}</span>}
     </CollapsibleTrigger>
-    <CollapsibleContent className="bg-[#121416]">{children}</CollapsibleContent>
+    <CollapsibleContent keepMounted className="bg-[#121416]">{children}</CollapsibleContent>
   </Collapsible>;
 }
 
