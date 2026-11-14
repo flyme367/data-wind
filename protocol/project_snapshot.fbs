@@ -1,0 +1,97 @@
+// 项目持久化格式（IndexedDB 内的二进制快照）。与 command_response.fbs 同源的存储边界契约：
+// 只允许追加字段、绝不重排/复用编号；不兼容变更必须递增各根表 version 并写迁移。
+// Rust 侧暂不消费本 schema（存储是前端边界）；include 仅为复用 JsonValue/WidgetStyle。
+include "command_response.fbs";
+
+namespace DataWindProtocol;
+
+file_identifier "DWPR";
+
+// ---------------------------------------------------------------- 场景树 ----
+
+enum SceneNodeType:ubyte { Group = 0, Model, Marker, Flyline, Fence, Light, Camera, Widget, Terrain, Water }
+
+table SnapshotVec3 { x:float; y:float; z:float; }
+
+/// 自定义网格以原始字节保存（旧 JSON 里是 base64 文本，此处省 33% 体积）。
+table CustomMeshSnapshot { bytes:[ubyte]; triangles:uint; source_name:string; }
+
+/// 山海鲸「组件状态」状态机补丁：patch 为样式/内容字段的 JSON 对象。
+table WidgetStateSnapshot { id:string (required); name:string; patch:JsonValue; }
+
+/// WidgetStyle（线协议）不含状态机，存储端用外层表补充，避免动引擎契约。
+table SceneWidgetSnapshot { style:WidgetStyle; states:[WidgetStateSnapshot]; }
+
+table SceneNodeSnapshot {
+  id:string (required);
+  name:string;
+  type:SceneNodeType = Group;
+  visible:bool = true;
+  locked:bool = false;
+  /// "" = 无父节点（TS 侧 null）
+  parent_id:string;
+  color:string;
+  position:SnapshotVec3 (required);
+  rotation:SnapshotVec3 (required);
+  scale:SnapshotVec3 (required);
+  box_size:SnapshotVec3;
+  /// flyline 终点
+  to:SnapshotVec3;
+  /// -1 = 未设置（合法范围 0..5，哨兵值不会与合法值混淆）
+  light_intensity:float = -1.0;
+  model_id:string;
+  custom_mesh:CustomMeshSnapshot;
+  board_page_id:string;
+  widget:SceneWidgetSnapshot;
+  data:JsonValue;
+  data_source:JsonValue;
+  shared_data_source_id:string;
+  /// Record<string,string> 的 JSON 对象形态，读取端走 validateScene 校验
+  bindings:JsonValue;
+  /// Interaction[] 的 JSON 数组形态，读取端走 validateScene 校验
+  interactions:JsonValue;
+  terrain:JsonValue;
+  water:JsonValue;
+}
+
+// ------------------------------------------------------------ 项目快照 ----
+
+/// 单项目完整快照：IndexedDB `snapshots` store 的值（key = 项目 id）。
+table ProjectSnapshot {
+  version:uint = 1;
+  saved_at:long;
+  name:string;
+  board_width:float = 1920.0;
+  board_height:float = 1080.0;
+  scene:[SceneNodeSnapshot];
+  /// 整个 EditorSettings 的 JSON 形态（40+ 字段全部走读取端 validateEditorSettings）
+  settings:JsonValue;
+  /// 项目参数（交互 action "projectParams" 写入的 liveData 快照）
+  params:JsonValue;
+}
+
+// ------------------------------------------------------------ 项目索引 ----
+
+/// 时间戳 0 = 字段缺省（真实时间戳恒 > 0）；字符串 "" = 缺省。
+table ProjectMetaSnapshot {
+  id:string (required);
+  name:string;
+  created_at:long = 0;
+  opened_at:long = 0;
+  updated_at:long = 0;
+  /// "empty" | "campus"，"" = 缺省
+  template:string;
+  folder:string;
+  /// 缩略图 dataURL，可能较大
+  thumbnail:string;
+  trashed_at:long = 0;
+  published_at:long = 0;
+}
+
+/// IndexedDB `index` store 的值（key = "index"），项目列表目录。
+table ProjectIndex {
+  version:uint = 1;
+  projects:[ProjectMetaSnapshot];
+}
+
+root_type ProjectSnapshot;

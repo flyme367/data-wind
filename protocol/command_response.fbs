@@ -1,0 +1,388 @@
+// Stable engine <-> frontend contract. Append union members and fields; never reorder them.
+// Sections below the "inbound commands" marker define the frontend -> engine direction
+// (CommandRequest envelope) and the board (egui) canvas outbound events; the DWCR
+// CommandResponse envelope above carries every drained event from both engine surfaces.
+namespace DataWindProtocol;
+
+struct Vec3 {
+  x:float;
+  y:float;
+  z:float;
+}
+
+struct Rgba {
+  r:ubyte;
+  g:ubyte;
+  b:ubyte;
+  a:ubyte;
+}
+
+table PickEvent {
+  // An absent ID clears selection.
+  id:string;
+}
+
+table TransformEvent {
+  id:string (required);
+  position:Vec3 (required);
+}
+
+table StatsEvent {
+  backend:string (required);
+  fps:float;
+  instances:uint;
+  visible:uint;
+  particles:uint;
+  triangles:uint;
+}
+
+table HudEvent {
+  grid:bool;
+  flylines:bool;
+  stats:bool;
+}
+
+table ErrorEvent {
+  message:string (required);
+}
+
+table ProbeEvent {
+  rgba:Rgba (required);
+}
+
+union EventPayload {
+  PickEvent,
+  TransformEvent,
+  StatsEvent,
+  HudEvent,
+  ErrorEvent,
+  ProbeEvent,
+  BoardEvent
+}
+
+table Event {
+  payload:EventPayload (required);
+}
+
+table CommandResponse {
+  // Zero is reserved for missing/invalid version; encoders explicitly write version 1.
+  protocol_version:ushort;
+  events:[Event] (required);
+}
+
+root_type CommandResponse;
+file_identifier "DWCR";
+file_extension "dwcr";
+
+// ---------------------------------------------------------------------------
+// Generic JSON-equivalent value. Carries schema-less widget payloads
+// (node data, set_value input, board event values) as binary; encoders always
+// emit every field so readers can rely on explicit presence.
+// ---------------------------------------------------------------------------
+table JsonNull {}
+
+table JsonBool {
+  value:bool;
+}
+
+table JsonNumber {
+  // All numbers travel as double; integer marks values that were integral in the
+  // source JSON so decoders can restore `3` instead of `3.0` when stringifying.
+  value:double;
+  integer:bool;
+}
+
+table JsonString {
+  value:string (required);
+}
+
+table JsonArray {
+  items:[JsonValue];
+}
+
+table JsonEntry {
+  key:string (required);
+  value:JsonValue;
+}
+
+table JsonObject {
+  entries:[JsonEntry];
+}
+
+union JsonPayload {
+  JsonNull,
+  JsonBool,
+  JsonNumber,
+  JsonString,
+  JsonArray,
+  JsonObject
+}
+
+table JsonValue {
+  // Zero (JsonNull) is the default; encoders always write the payload explicitly.
+  payload:JsonPayload (required);
+}
+
+// ---------------------------------------------------------------------------
+// Board (egui canvas) outbound events, appended to the DWCR EventPayload union.
+// ---------------------------------------------------------------------------
+enum BoardAction:ubyte {
+  Change,
+  Focus,
+  Open,
+  Media,
+  Upload,
+  ColorPicker,
+  // 山海鲸媒体组件翻页：轮播图切换按钮 / 基础PDF 页码按钮，value = -1(上一页) | 1(下一页)。
+  Page
+}
+
+table BoardEvent {
+  id:string (required);
+  kind:string (required);
+  action:BoardAction;
+  value:JsonValue;
+}
+
+// ---------------------------------------------------------------------------
+// Small standalone outbound messages (not part of the DWCR drain queue).
+// ---------------------------------------------------------------------------
+table StringList {
+  items:[string];
+}
+
+table HitResult {
+  // Empty byte payload means "no hit"; an absent handle means node body.
+  id:string (required);
+  handle:string;
+  control:bool;
+}
+
+// ---------------------------------------------------------------------------
+// Inbound commands: frontend -> engine. One CommandRequest buffer per wasm
+// call; each method verifies version and accepts only its own payload type.
+// ---------------------------------------------------------------------------
+enum Mode:ubyte {
+  Editor,
+  Login
+}
+
+table SetMode {
+  mode:Mode;
+}
+
+table SetHud {
+  grid:bool;
+  flylines:bool;
+  stats:bool;
+}
+
+// 0-1 float channels; distinct from ubyte Rgba above on purpose.
+struct Color4 {
+  r:float;
+  g:float;
+  b:float;
+  a:float;
+}
+
+table SetEnvironment {
+  background:Color4;
+  ground:Color4;
+  // Clamped to 0.1..1.0 on decode.
+  daylight:float;
+  // Clamped to 20.0..10000.0 on decode.
+  fog_distance:float;
+}
+
+table SetSelections {
+  ids:[string];
+}
+
+// Mirrors the frontend FlatInstance snapshot (camelCase wire names below are
+// historical; field order is the contract).
+table TerrainParams {
+  preset:string;
+  seed:uint = 42;
+  levels:uint = 6;
+  detail_scale:float = 16.0;
+  rock_color:Vec3;
+  snow_color:Vec3;
+  snow_line:float = 1.1;
+  resolution:uint;
+  heights:[ushort];
+  collision:bool;
+}
+
+struct WaterPoint { x:float; z:float; }
+struct WaterSource { x:float; z:float; rate:float; radius:float; }
+table WaterParams {
+  preset:string;
+  wave_height:float = 0.12;
+  wave_length:float = 8.0;
+  wave_speed:float = 1.0;
+  direction:float = 30.0;
+  opacity:float = 0.8;
+  refraction_color:Vec3;
+  scattering_color:Vec3;
+  transparency_depth:float = 5.0;
+  roughness:float = 0.15;
+  foam:float = 0.25;
+  river_width:float = 0.16;
+  points:[WaterPoint];
+  running:bool = true;
+  initial_depth:float = 0.15;
+  sources:[WaterSource];
+  reset_version:uint;
+}
+
+table Instance {
+  id:string (required);
+  kind:string (required);
+  pos:Vec3 (required);
+  size:Vec3 (required);
+  rot_y:float;
+  // Absent vector means "no explicit rotation".
+  rotation:[float];
+  color:Vec3 (required);
+  // Null means "not locked" (scalar optionality).
+  locked:bool = null;
+  to:[float];
+  model_id:string;
+  terrain:TerrainParams;
+  water:WaterParams;
+}
+
+table SceneUpdate {
+  instances:[Instance] (required);
+}
+
+table Camera {
+  target:Vec3 (required);
+  yaw:float;
+  pitch:float;
+  dist:float;
+}
+
+table RenderOptions {
+  grid:bool;
+  // Empty string means "no selection".
+  selected_id:string;
+  selected_ids:[string];
+  time:float;
+  // Empty string falls back to the engine default background.
+  background:string;
+  // Zero falls back to the engine default daylight.
+  daylight:float;
+}
+
+table SoftwareFrame {
+  instances:[Instance] (required);
+  camera:Camera (required);
+  options:RenderOptions (required);
+}
+
+table WidgetStyle {
+  kind:string;
+  text:string;
+  value:string;
+  unit:string;
+  font_size:float;
+  background:string;
+  border_color:string;
+  opacity:float;
+  radius:float;
+  image:string;
+  align:string;
+  font_family:string;
+  font_weight:ushort;
+  italic:bool;
+  underline:bool;
+  line_height:float;
+  letter_spacing:float;
+  border_style:string;
+  border_width:float;
+  shadow_color:string;
+  shadow_blur:float;
+  shadow_offset_x:float;
+  shadow_offset_y:float;
+}
+
+table BoardNodeWire {
+  id:string (required);
+  name:string;
+  x:float;
+  y:float;
+  width:float;
+  height:float;
+  rotation:float;
+  color:string;
+  locked:bool;
+  widget:WidgetStyle;
+  data:JsonValue;
+}
+
+table BoardSync {
+  width:float;
+  height:float;
+  preview:bool;
+  selected:[string];
+  nodes:[BoardNodeWire];
+}
+
+table SetValue {
+  id:string (required);
+  value:JsonValue;
+}
+
+table BoardClock {
+  time:string;
+  year:uint;
+  month:uint;
+  day:uint;
+  first_weekday:uint;
+  days:uint;
+  // Epoch milliseconds.
+  now:double;
+}
+
+table Ring {
+  // Flat lon,lat pairs.
+  points:[float];
+}
+
+table Polygon {
+  rings:[Ring];
+}
+
+table GeoFeature {
+  // Polygon features carry one polygon; MultiPolygon features one per polygon.
+  polygons:[Polygon];
+  name:string;
+  name_zh:string;
+  // Source dataset, e.g. "world" (country borders) or "china" (province borders);
+  // lets renderers pick region subsets without extra round trips.
+  dataset:string;
+}
+
+table GeoJsonDocument {
+  features:[GeoFeature];
+}
+
+union CommandPayload {
+  SetMode,
+  SetHud,
+  SetEnvironment,
+  SetSelections,
+  SceneUpdate,
+  SoftwareFrame,
+  BoardSync,
+  SetValue,
+  BoardClock,
+  GeoJsonDocument
+}
+
+table CommandRequest {
+  // Zero is reserved for missing/invalid version; encoders explicitly write version 1.
+  protocol_version:ushort;
+  payload:CommandPayload (required);
+}

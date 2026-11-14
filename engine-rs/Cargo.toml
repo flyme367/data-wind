@@ -1,0 +1,59 @@
+[workspace]
+resolver = "3"
+members = [
+    "oxgpu",
+    "data-wind-engine",
+    "data-wind-cpu",
+    "probe",
+    "protocol-smoke",
+    "data-wind-assets",
+]
+exclude = ["vendor/bevy_egui"]
+default-members = ["oxgpu", "data-wind-engine", "data-wind-cpu", "probe", "protocol-smoke"]
+
+[workspace.package]
+edition = "2024"
+# bevy 0.20.1 的 MSRV；实际编译工具链见仓库根 rust-toolchain.toml（1.99.1）
+rust-version = "1.97"
+
+[workspace.lints.rust]
+unsafe_code = "warn"
+
+[workspace.lints.clippy]
+all = "warn"
+pedantic = "warn"
+
+[workspace.dependencies]
+wgpu = "30"
+glam = { version = "0.34", features = ["bytemuck"] }
+bytemuck = { version = "1", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+earcutr = "0.5"
+flatbuffers = "=25.9.23"
+wasm-bindgen = "0.2.129"
+# rsproxy 镜像最高同步到 0.3.106，wgpu 30 仅要求 ^0.3.104，兼容
+web-sys = "0.3.106"
+js-sys = "0.3.106"
+console_error_panic_hook = "0.1"
+log = "0.4"
+rayon = "1.12"
+parry3d = { version = "0.31.1", default-features = false, features = ["required-features", "std", "alloc"] }
+wasm-bindgen-rayon = "1.3"
+# egui 锁定 0.36 = bevy_egui 0.43 所依赖的版本，全 workspace 单一 egui（勿升 0.37，会双版本）
+egui = { version = "0.36", features = ["default_fonts"] }
+egui-wgpu = "0.36"
+# bevy_egui 走本地 vendor（0.43.1），由 scripts/ 维护补丁
+bevy_egui = { path = "vendor/bevy_egui" }
+# egui_plot 0.37 依赖 egui 0.36（0.38 依赖 egui 0.37，会引入双版本 egui）
+egui_plot = "0.37"
+# 主渲染器迁移 Bevy（2026-11-04）：wgpu ^30 与 oxgpu 同行，egui ^0.36 与上文同行
+bevy = { version = "0.20", default-features = false, features = [
+    "std", "default_app", "bevy_core_pipeline", "bevy_winit", "multi_threaded", "webgpu",
+] }
+
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1

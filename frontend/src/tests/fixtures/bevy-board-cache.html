@@ -1,0 +1,52 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Board cache smoke</title>
+<style>canvas { width: 320px; height: 180px; display: block; }</style>
+<pre id="result">running</pre>
+<button id="update" disabled>Update to green</button>
+<canvas id="canvas"></canvas>
+<script type="module">
+import init, { BoardCanvas } from '/src/wasm/data_wind_engine.js';
+import { widgetNode } from '/src/data/editor.ts';
+import { boardClock, boardNodes } from '/src/engine/boardScene.ts';
+import { encodeBoardClock, encodeBoardSync } from '/src/engine/commands.ts';
+
+const result = document.querySelector('#result');
+const canvas = document.querySelector('#canvas');
+const frame = () => new Promise(requestAnimationFrame);
+const errors = [];
+window.addEventListener('error', event => errors.push(String(event.message)));
+window.addEventListener('unhandledrejection', event => errors.push(String(event.reason)));
+
+try {
+  await init();
+  const board = await BoardCanvas.create(canvas, true);
+  const node = { ...widgetNode('shape'), id: 'shape', visible: true, locked: false,
+    parentId: null, color: '#ff0000', data: { shape: 'rect' } };
+  node.transform.position = { x: 0, y: 0, z: 0 };
+  node.boxSize = { x: 320, y: 180, z: 1 };
+  const sync = () => board.sync_scene(encodeBoardSync({
+    width: 320, height: 180, preview: true, selected: [], nodes: boardNodes([node]),
+  }));
+  sync();
+  board.frame(320, 180, encodeBoardClock(boardClock()));
+  const deadline = performance.now() + 120_000;
+  while (canvas.width === 300 && canvas.height === 150 && performance.now() < deadline) await frame();
+  if (canvas.width === 300 && canvas.height === 150) throw Error('board initialization timed out');
+  for (let i = 0; i < 180; i++) await frame();
+  if (errors.length) throw Error(errors.join('\n'));
+  result.textContent = 'READY: static red board after 180 frames';
+  const update = document.querySelector('#update');
+  update.disabled = false;
+  update.addEventListener('click', async () => {
+    node.color = '#00ff00';
+    sync();
+    board.frame(320, 180, encodeBoardClock(boardClock()));
+    for (let i = 0; i < 120; i++) await frame();
+    result.textContent = errors.length ? 'FAIL: ' + errors.join('\n') :
+      'READY: static green board after scene update';
+  });
+} catch (error) {
+  result.textContent = 'FAIL: ' + String(error) + '\n' + errors.join('\n');
+}
+</script>

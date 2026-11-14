@@ -1,0 +1,30 @@
+[package]
+name = "native-probe"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+# Keep feature checks valid in engine modules imported by the native tests.
+[features]
+parallel = []
+
+[dependencies]
+wgpu.workspace = true
+pollster = "0.4"
+
+[dev-dependencies]
+data-wind-assets = { path = "../data-wind-assets", default-features = false }
+rayon.workspace = true
+parry3d.workspace = true
+egui.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+earcutr.workspace = true
+oxgpu = { path = "../oxgpu" }
+flatbuffers.workspace = true
+bytemuck.workspace = true
+glam.workspace = true
+naga = { version = "30", features = ["wgsl-in"] }

@@ -1,0 +1,40 @@
+/* 发布成品页自身样式（画面共享样式在 board.css） */
+.viewer-page { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #080b10; }
+.viewer-page.is-scroll-fit { display: block; overflow: auto; }
+.viewer-page .board-canvas { box-shadow: none; }
+@keyframes viewer-board-page-fade { from { opacity: .15; } to { opacity: 1; } }
+@keyframes viewer-board-page-slide { from { transform: translateX(7%); opacity: .25; } to { transform: translateX(0); opacity: 1; } }
+@keyframes viewer-board-page-slide-y { from { transform: translateY(7%); opacity: .25; } to { transform: translateY(0); opacity: 1; } }
+@keyframes viewer-board-page-zoom { from { transform: scale(.93); opacity: .25; } to { transform: scale(1); opacity: 1; } }
+.viewer-page .board-canvas.board-page-fade { animation: viewer-board-page-fade .35s ease-out both; }
+.viewer-page .board-canvas.board-page-slide, .viewer-page .board-canvas.board-page-slideX { animation: viewer-board-page-slide .35s ease-out both; }
+.viewer-page .board-canvas.board-page-slideY { animation: viewer-board-page-slide-y .35s ease-out both; }
+.viewer-page .board-canvas.board-page-zoom { animation: viewer-board-page-zoom .35s ease-out both; }
+.viewer-board-backdrop { position: absolute; z-index: 1; inset: 0; overflow: hidden; pointer-events: none; }
+.viewer-board-backdrop-shared { z-index: 1; }
+.viewer-board-page-color { position: absolute; z-index: 2; inset: 0; pointer-events: none; }
+.viewer-board-backdrop-page { z-index: 3; }
+.viewer-board-background-media { position: absolute; inset: -4%; width: 108%; height: 108%; background-position: 0 0; }
+.viewport-host { position: absolute; inset: 0; overflow: hidden; }
+.viewport-host canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; user-select: none; }
+.viewport-host canvas[data-fallback] { pointer-events: none; }
+
+.viewer-fullscreen { position: fixed; z-index: 20; right: 14px; bottom: 14px; padding: 7px 16px; border: 1px solid #ffffff2e; border-radius: 3px; background: #12181fd0; color: #cfd8e3; font-size: 12px; opacity: .55; transition: opacity .15s; }
+.viewer-fullscreen:hover { opacity: 1; }
+.viewer-database-dialog { color: #dce6f0; background: #171c23; border: 1px solid #555d68; padding: 20px; max-width: min(90vw, 420px); }
+.viewer-database-dialog::backdrop { background: #0009; }
+.viewer-database-dialog h3 { margin: 0 0 12px; }
+.viewer-database-dialog input { box-sizing: border-box; width: 100%; padding: 8px; color: #fff; background: #101318; border: 1px solid #59616c; }
+.viewer-database-dialog form div { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+.viewer-database-dialog button, .viewer-database-reconnect { padding: 6px 14px; color: #fff; background: #168bff; border: 0; cursor: pointer; }
+.viewer-database-reconnect { position: fixed; z-index: 21; right: 14px; bottom: 55px; }
+
+.viewer-toast-host { position: fixed; z-index: 30; top: 26px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
+.viewer-toast { padding: 9px 18px; border-radius: 4px; background: #223042ee; border: 1px solid #3b5a7d; color: #dbe7f5; font-size: 13px; animation: viewer-toast-in .2s ease-out; transition: opacity .3s, transform .3s; }
+.viewer-toast.is-leaving { opacity: 0; transform: translateY(-6px); }
+@keyframes viewer-toast-in { from { opacity: 0; transform: translateY(-6px); } }
+
+.viewer-fatal { height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #93a4b8; }
+.viewer-fatal h1 { font-size: 18px; font-weight: 500; color: #d5deea; margin: 0; }
+.viewer-fatal p { margin: 0; font-size: 13px; }
+.viewer-fatal a { margin-top: 14px; color: #4c9ffe; font-size: 13px; }

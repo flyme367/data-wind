@@ -1,0 +1,29 @@
+[package]
+name = "data-wind-assets"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[lints]
+workspace = true
+
+[features]
+default = ["import"]
+import = ["dep:base64", "dep:glam", "dep:gltf", "dep:image", "dep:percent-encoding", "dep:tobj", "dep:wasm-bindgen"]
+
+[dependencies]
+base64 = { version = "0.22", optional = true }
+bytemuck.workspace = true
+flatbuffers.workspace = true
+glam = { workspace = true, optional = true }
+gltf = { version = "1.4", default-features = false, features = ["utils", "names", "extensions", "KHR_texture_transform"], optional = true }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"], optional = true }
+percent-encoding = { version = "2.3", optional = true }
+tobj = { version = "4", default-features = false, optional = true }
+wasm-bindgen = { workspace = true, optional = true }
+
+[dev-dependencies]
+serde_json.workspace = true

@@ -1,0 +1,36 @@
+<!doctype html><meta charset="utf-8"><title>Lifecycle smoke</title>
+<style>canvas{width:320px;height:180px;display:block}</style><pre id="result">running</pre>
+<script type="module">
+import init, {Engine, BoardCanvas} from '/src/wasm/data_wind_engine.js';
+import {encodeBoardClock, encodeBoardSync} from '/src/engine/commands.ts';
+import {boardClock} from '/src/engine/boardScene.ts';
+const result = document.querySelector('#result');
+const errors = [];
+window.addEventListener('error', e => errors.push(String(e.message)));
+window.addEventListener('unhandledrejection', e => errors.push(String(e.reason)));
+const originalError = console.error;
+console.error = (...args) => { errors.push(args.map(String).join(' ')); originalError(...args); };
+const frames = async () => { for (let i=0; i<50; i++) await new Promise(requestAnimationFrame); };
+const canvas = () => { const c=document.createElement('canvas'); document.body.appendChild(c); return c; };
+const check = async (c, label) => {
+  const deadline = performance.now() + 20_000;
+  while (performance.now() < deadline) {
+    if (c.width > 1 && c.height > 1 && (c.width !== 300 || c.height !== 150) && c.id) return;
+    await new Promise(requestAnimationFrame);
+  }
+  throw Error(`${label} canvas not ready: ${c.width}x${c.height}`);
+};
+try {
+  await init();
+  let c1=canvas(), board1=await BoardCanvas.create(c1,true); await frames(); await check(c1,'board first');
+  let c2=canvas(), board2=await BoardCanvas.create(c2,true); board1.free(); c1.remove(); await frames(); await check(c2,'board replacement'); board2.sync_scene(encodeBoardSync({width:100,height:100,preview:false,selected:[],nodes:[]})); if (board2.snapshot(8,8,encodeBoardClock(boardClock())).length !== 264) throw Error('replacement board not usable');
+  let c3=canvas(), engine1=await Engine.create(c3); await frames(); await check(c3,'viewport first');
+  let c4=canvas(), engine2=await Engine.create(c4); engine1.free(); c3.remove(); engine2.take_response(); await frames(); await check(c4,'viewport replacement'); if (!engine2.take_response().length) throw Error('replacement viewport stopped updating');
+  board2.free(); engine2.free(); c2.remove(); c4.remove(); await frames();
+  let c5=canvas(), board3=await BoardCanvas.create(c5,true); await frames(); await check(c5,'board restart'); board3.sync_scene(encodeBoardSync({width:100,height:100,preview:false,selected:[],nodes:[]})); if (board3.snapshot(8,8,encodeBoardClock(boardClock())).length !== 264) throw Error('restarted board not usable');
+  let c6=canvas(), engine3=await Engine.create(c6); engine3.take_response(); await frames(); await check(c6,'viewport restart'); if (!engine3.take_response().length) throw Error('restarted viewport stopped updating');
+  if (errors.length) throw Error(errors.join('\n'));
+  result.textContent='PASS: board first, replacement, zero-window restart, viewport replacement';
+  board3.free(); engine3.free();
+} catch (error) { result.textContent='FAIL: '+String(error)+'\n'+errors.join('\n'); }
+</script>

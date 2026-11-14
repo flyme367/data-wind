@@ -1,0 +1,93 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Model batching smoke</title>
+<style>canvas { width: 320px; height: 180px; display: block; }</style>
+<pre id="result">running</pre>
+<canvas id="canvas"></canvas>
+<script type="module">
+import init, { Engine } from '/src/wasm/data_wind_engine.js';
+import { encodeSceneUpdate, encodeSetHud } from '/src/engine/commands.ts';
+import { decodePreviewFrame } from '/src/engine/captureFrame.ts';
+
+const result = document.querySelector('#result');
+const errors = [];
+window.addEventListener('error', event => errors.push(String(event.message)));
+window.addEventListener('unhandledrejection', event => errors.push(String(event.reason)));
+const originalError = console.error;
+console.error = (...args) => { errors.push(args.map(String).join(' ')); originalError(...args); };
+const nextFrame = () => new Promise(requestAnimationFrame);
+
+function squareMesh() {
+  const positions = [[-.5,-.5,0],[.5,-.5,0],[.5,.5,0],[-.5,-.5,0],[.5,.5,0],[-.5,.5,0]];
+  const bytes = new Uint8Array(8 + positions.length * 36);
+  bytes.set([68, 87, 77, 49]);
+  const view = new DataView(bytes.buffer);
+  view.setUint32(4, positions.length, true);
+  positions.forEach((position, vertex) => {
+    [...position, 0, 0, 1, 1, 1, 1].forEach((value, component) => {
+      view.setFloat32(8 + vertex * 36 + component * 4, value, true);
+    });
+  });
+  return bytes;
+}
+
+function hasDominant(frame, point, channel) {
+  const [x, y] = point.map(Math.round);
+  let found = false;
+  for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+    const px = x + dx, py = y + dy;
+    if (px < 0 || py < 0 || px >= frame.width || py >= frame.height) continue;
+    const offset = (py * frame.width + px) * 4;
+    const values = frame.pixels.subarray(offset, offset + 3);
+    if (values[channel] > 45 && values[channel] > values[(channel + 1) % 3] * 1.5 &&
+        values[channel] > values[(channel + 2) % 3] * 1.5) found = true;
+  }
+  return found;
+}
+
+function assertDominant(frame, point, channel) {
+  if (!hasDominant(frame, point, channel)) throw Error(`missing channel ${channel} at ${point}`);
+}
+
+async function capture(engine) {
+  engine.set_preview(false);
+  engine.set_preview(true);
+  const deadline = performance.now() + 20_000;
+  while (performance.now() < deadline) {
+    await nextFrame();
+    const error = engine.take_preview_error();
+    if (error) throw Error(error);
+    const bytes = engine.take_preview_frame();
+    if (bytes.length) return decodePreviewFrame(bytes);
+  }
+  throw Error('GPU preview timed out');
+}
+
+try {
+  await init();
+  const engine = await Engine.create(document.querySelector('#canvas'));
+  engine.resize(320, 180, 1);
+  engine.set_capture_size(320, 180);
+  engine.camera_view(0, 4, 0, 0, .01, 20);
+  engine.set_hud(encodeSetHud({grid:false,flylines:false,stats:false}));
+  engine.register_mesh('a', squareMesh());
+  engine.register_mesh('b', squareMesh());
+  const item = (id, modelId, x, color) => ({id, kind:'mesh', modelId, pos:[x,4,0], size:[3,3,3], rotY:0, color});
+  const objects = [item('red','a',-5,[1,.02,.02]), item('green','b',0,[.02,1,.02]), item('blue','a',5,[.02,.02,1])];
+  engine.sync_scene(encodeSceneUpdate(objects));
+  const frame = await capture(engine);
+  [-5,0,5].forEach((x, channel) => assertDominant(frame, Array.from(engine.screen_position(x,4,0)), channel));
+  objects[0].pos[0] = 10_000;
+  engine.sync_scene(encodeSceneUpdate(objects));
+  const moved = await capture(engine);
+  [0,5].forEach((x, index) => assertDominant(moved, Array.from(engine.screen_position(x,4,0)), index + 1));
+  if (hasDominant(moved, Array.from(engine.screen_position(-5,4,0)), 0)) {
+    throw Error('culled instance remains visible');
+  }
+  if (errors.length) throw Error(errors.join('\n'));
+  result.textContent = 'PASS: interleaved models, instances, visibility update, GPU readback';
+  engine.free();
+} catch (error) {
+  result.textContent = 'FAIL: ' + String(error) + '\n' + errors.join('\n');
+}
+</script>

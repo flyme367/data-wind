@@ -1,0 +1,3 @@
+# data-wind 引擎工具链：bevy 0.20.1 要求 rustc ≥1.97.1（rsproxy stable 通道停在 1.95，故钉具体版本）
+[toolchain]
+channel = "1.99.1"

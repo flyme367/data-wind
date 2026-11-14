@@ -1,0 +1,9 @@
+{
+  "token": "replace-with-a-long-random-token",
+  "allowedOrigins": ["http://127.0.0.1:5173", "http://localhost:5173"],
+  "profiles": [
+    { "id": "mysql-demo", "name": "MySQL", "type": "mysql", "host": "127.0.0.1", "port": 3306, "user": "readonly", "password": "", "database": "example" },
+    { "id": "pg-demo", "name": "PostgreSQL", "type": "postgres", "host": "127.0.0.1", "port": 5432, "user": "readonly", "password": "", "database": "example" }
+  ],
+  "webhooks": []
+}

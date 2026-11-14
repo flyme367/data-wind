@@ -1,0 +1,65 @@
+// Coordinate system is glTF's right-handed, Y-up system. Node transforms are baked in.
+// Attributes are packed scalar vectors: xyz positions and normals, uv texture coordinates.
+namespace DataWind.Model;
+
+enum AlphaMode:ubyte { Opaque, Mask, Blend }
+enum WrapMode:ubyte { Repeat, Clamp, Mirror }
+
+table Texture {
+  name:string;
+  width:uint;
+  height:uint;
+  // Decoded, tightly packed sRGB RGBA8 rows, top to bottom.
+  rgba:[ubyte] (required);
+}
+
+table TexcoordSet {
+  index:ubyte;
+  values:[float] (required);
+}
+
+table MaterialMap {
+  texture_index:uint;
+  texcoords:[float] (required);
+  wrap_u:WrapMode = Repeat;
+  wrap_v:WrapMode = Repeat;
+  strength:float = 1;
+}
+
+table Primitive {
+  name:string;
+  positions:[float] (required);
+  normals:[float] (required);
+  texcoords:[float];
+  colors:[float]; // Optional linear RGBA per vertex.
+  indices:[uint] (required);
+  // Linear base color factor; texture_index refers to the root textures vector.
+  base_color:[float] (required);
+  texture_index:int = -1;
+  alpha_mode:AlphaMode = Opaque;
+  alpha_cutoff:float = 0.5;
+  double_sided:bool = false;
+  wrap_u:WrapMode = Repeat;
+  wrap_v:WrapMode = Repeat;
+  emissive:[float]; // Optional linear RGB factor.
+  emissive_texture_index:int = -1;
+  emissive_texcoords:[float];
+  emissive_wrap_u:WrapMode = Repeat;
+  emissive_wrap_v:WrapMode = Repeat;
+  source_texcoords:[TexcoordSet]; // Original UV sets before texture-specific transforms.
+  metallic:float = 0;
+  roughness:float = 1;
+  normal_map:MaterialMap;
+  metallic_map:MaterialMap;
+  object_normal_basis:[float]; // Column-major inverse-transpose of the model node transform.
+}
+
+table ModelAsset {
+  version:uint = 1;
+  name:string (required);
+  primitives:[Primitive] (required);
+  textures:[Texture];
+}
+root_type ModelAsset;
+file_identifier "DWMA";
+file_extension "dwasset";

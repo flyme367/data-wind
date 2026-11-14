@@ -1,0 +1,3 @@
+src/wasm/
+src/protocol/generated/
+dist/

@@ -1,0 +1,12 @@
+.DS_Store
+frontend/node_modules/
+local-db-gateway/node_modules/
+local-db-gateway/config.json
+frontend/dist/
+engine-rs/target/
+*.log
+tools/flatc
+frontend/public/bevy-demo/pkg/
+# 脚本生成物，可重新生成：sync-reference-kits.py / pnpm prepare:models
+frontend/public/kits/
+frontend/public/models/

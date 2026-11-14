@@ -1,0 +1,38 @@
+[package]
+name = "data-wind-cpu"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+description = "数字孪生 CPU 渲染（软渲 + 看板 egui 栅格化）：无 bevy/wgpu 依赖，支持 wasm32-atomics + rayon 并行构建"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[lints]
+workspace = true
+
+[features]
+# atomic + rayon 线程池构建（worker 软渲用）；无 bevy，规避 egui Context 在 atomics 下 !Send 的上游约束
+parallel = ["dep:wasm-bindgen-rayon"]
+# wasm-bindgen facade（SoftwareCanvas/BoardCanvas 类）：仅 CPU 独立 wasm 产物开启；
+# engine 依赖本 crate 时关闭，避免与 engine 自己的 BoardCanvas 导出冲突
+wasm = []
+
+[dependencies]
+data-wind-assets = { path = "../data-wind-assets", default-features = false }
+egui.workspace = true
+flatbuffers.workspace = true
+bytemuck.workspace = true
+glam.workspace = true
+earcutr.workspace = true
+serde_json.workspace = true
+rayon.workspace = true
+serde.workspace = true
+parry3d.workspace = true
+wasm-bindgen.workspace = true
+wasm-bindgen-futures = "0.4.79"
+web-sys = { workspace = true, features = ["HtmlCanvasElement", "console"] }
+console_error_panic_hook.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen-rayon = { workspace = true, optional = true }

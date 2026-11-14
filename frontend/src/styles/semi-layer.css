@@ -1,0 +1,2 @@
+/* Semi + Tailwind v4 冲突消解：layer 顺序必须先于 tailwind.css 和 Semi 组件 import 引入 */
+@layer theme, base, semi, utilities;

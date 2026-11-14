@@ -1,0 +1,37 @@
+[package]
+name = "data-wind-engine"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+description = "数字孪生 3D 渲染引擎 (wasm): glam 数学 + Bevy/bevy_egui 渲染 + oxgpu 计算"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[lints]
+workspace = true
+
+[features]
+# 引擎（bevy）不再有 atomic 并行构建：CPU 渲染并行性由 data-wind-cpu 独立 wasm 产物承担
+parallel = []
+
+[dependencies]
+wgpu = { workspace = true, features = ["web"] }
+glam.workspace = true
+bytemuck.workspace = true
+flatbuffers.workspace = true
+wasm-bindgen.workspace = true
+wasm-bindgen-futures = "0.4.79"
+web-sys = { workspace = true, features = ["HtmlCanvasElement", "console"] }
+console_error_panic_hook.workspace = true
+parry3d.workspace = true
+oxgpu = { path = "../oxgpu" }
+data-wind-cpu = { path = "../data-wind-cpu" }
+avian3d = { version = "0.8", default-features = false, features = ["3d", "parry-f32"] }
+egui.workspace = true
+egui_plot.workspace = true
+bevy = { workspace = true, features = ["bevy_log", "bevy_asset", "bevy_mesh", "bevy_camera"] }
+bevy_egui.workspace = true
+
+[dev-dependencies]
+naga = { version = "30.0.1", features = ["wgsl-in"] }
