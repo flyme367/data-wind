@@ -5,6 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
+  '@fontsource-variable/figtree':
+    specifier: ^5.3.0
+    version: 5.3.0
   '@fontsource-variable/geist':
     specifier: ^5.3.0
     version: 5.3.0
@@ -452,6 +455,10 @@ packages:
 
   /@floating-ui/utils@0.2.12:
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
+    dev: false
+
+  /@fontsource-variable/figtree@5.3.0:
+    resolution: {integrity: sha512-VRVodD7OiG7apQwE8/2fMjaqpY/a0qRJqL5HtYj8CKIVps+9amaFcdfKmDIf7iqYQx6iPLlArVXAfKeIZmVcNQ==}
     dev: false
 
   /@fontsource-variable/geist-mono@5.3.0:

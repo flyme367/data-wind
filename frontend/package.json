@@ -27,6 +27,7 @@
     "check:model-protocol": "node scripts/generate-model-protocol.mjs --check"
   },
   "dependencies": {
+    "@fontsource-variable/figtree": "^5.3.0",
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@icon-park/react": "^1.4.2",
