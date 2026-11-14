@@ -486,7 +486,7 @@ const controlPresets: Partial<Record<WidgetKind, {
   menuHorizontal: { size: [480, 48], text: "首页", background: "#14283de6", border: "#284a6d", data: { items: ["首页", "实时监控", "统计分析", "告警中心"] } },
   search: { size: [280, 44], text: "搜索数据…", background: "#14283de6", border: "#284a6d", radius: 22 },
   progress: { size: [320, 72], text: "设备在线率", background: "#14283de6", border: "#284a6d", data: { percent: 68 } },
-  iframe: { size: [480, 320], text: "网页", background: "#101a2cf2", border: "#284a6d", data: { url: "https://semi.design" } },
+  iframe: { size: [480, 320], text: "网页", background: "#101a2cf2", border: "#284a6d", data: { url: "https://example.com" } },
   weather: { size: [240, 120], text: "北京 · 多云", value: "26", unit: "℃", background: "#14283de6", border: "#284a6d" },
   calendar: { size: [300, 300], text: "日历", background: "#14283dcc", border: "#284a6d" },
   timer: { size: [260, 110], text: "运行时长", background: "#14283de6", border: "#284a6d", data: { startAt: 0 } },
