@@ -9,14 +9,14 @@ button { cursor: pointer; }
 a { color: inherit; text-decoration: none; }
 button:focus-visible, a:focus-visible { outline: 2px solid #1a3bb7; outline-offset: 3px; }
 /* 输入类控件：Input/Textarea 原生元素 + InputGroup 包裹壳 + Select 触发器，统一暗色平底样式 */
-html.dark :is([data-slot="input"], [data-slot="textarea"], [data-slot="input-group"], [data-slot="select-trigger"]) { background: var(--card); border: 1px solid #4b4c4e; border-radius: 0; }
+html.dark :is([data-slot="input"], [data-slot="textarea"], [data-slot="input-group"], [data-slot="select-trigger"]) { background: var(--card); border: 1px solid var(--border); border-radius: 0; }
 html.dark [data-slot="input"]:focus, html.dark [data-slot="textarea"]:focus, html.dark [data-slot="input-group"]:focus-within, html.dark [data-slot="select-trigger"]:focus { border-color: #1a3bb7; }
 html.dark [data-slot="button"] { font-size: 13px; font-weight: 400; }
 html.dark [data-slot="dialog-content"] { background: var(--card); border-radius: 3px; }
 html.dark [data-slot="dialog-header"] { margin-bottom: 16px; }
 html.dark [data-slot="dialog-title"] { font-size: 16px; font-weight: 400; }
 html.dark [data-slot="button"][data-variant="ghost"] { color: #c2c2c2; }
-html.dark [data-slot="button"][data-variant="ghost"]:hover { background: #ffffff0d; }
+html.dark [data-slot="button"][data-variant="ghost"]:hover { background: var(--accent); }
 .brand-logo { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .brand-logo svg { display: block; flex-shrink: 0; }
 .brand-wordmark { font-size: 17px; font-weight: 600; letter-spacing: 1px; line-height: 1; white-space: nowrap; }
@@ -36,7 +36,7 @@ html.dark [data-slot="button"][data-variant="ghost"]:hover { background: #ffffff
 .workbench-header > [data-slot="input-group"] { flex: 1; width: auto; min-width: 200px; height: 36px; border-radius: 3px; border-color: #343434 !important; }
 .workspace-account { display: flex; gap: 9px; align-items: center; margin-left: auto; border: 0; background: none; color: #d6d6d6; padding: 0 0 0 4px; text-align: left; white-space: nowrap; }
 .workspace-account small { display: block; font-size: 10px; color: #b0a372; margin-top: 4px; }
-.workbench-content { flex: 1; min-height: 0; overflow-y: auto; padding: 22px 32px 40px; scrollbar-width: thin; scrollbar-color: #454545 transparent; }
+.workbench-content { flex: 1; min-height: 0; overflow-y: auto; padding: 22px 32px 40px; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 .project-actions { display: flex; align-items: center; gap: 12px; min-height: 32px; }
 .project-actions > [data-slot="button"] { min-width: 128px; height: 32px; }
 .project-actions > [data-slot="button"]:not([data-variant="default"]) { border: 1px solid #4a4b4c; background: transparent; }
@@ -83,7 +83,7 @@ html.dark [data-slot="button"][data-variant="ghost"]:hover { background: #ffffff
 .content-title h1 { font-size: 18px; color: #eee; }
 .content-title span { font-size: 12px; color: #888; }
 .market-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 22px; }
-.market-card { min-width: 0; background: var(--card); border: 1px solid #333; color: #ddd; padding: 0 0 15px; text-align: left; overflow: hidden; border-radius: 4px; }
+.market-card { min-width: 0; background: var(--card); border: 1px solid var(--border); color: #ddd; padding: 0 0 15px; text-align: left; overflow: hidden; border-radius: 4px; }
 .market-card > img { width: 100%; aspect-ratio: 16/9; object-fit: cover; }
 .market-card h3 { font-size: 14px; padding: 0 14px; font-weight: 400; }
 .market-card p { color: #888; font-size: 12px; line-height: 1.7; padding: 0 14px; min-height: 40px; }
@@ -202,9 +202,9 @@ kbd { margin-left: 24px; font: 11px monospace; color: #777; }
 .editor-asset-column { position: relative; flex-shrink: 0; display: flex; }
 /* z-index 须高于 .board-canvas-selection(8)：同为 8 时 stage 靠后绘制，画布控制框会盖在面板上 */
 /* 3D 编辑态抽屉宽度与看板态 .asset-overlay-panel 保持一致（常规 716 / 展开 884） */
-.editor-asset-drawer { position: absolute; left: 100%; top: 0; bottom: 0; z-index: 9; width: 716px; max-width: calc(100vw - 232px); background: #18191a; border-right: 1px solid var(--border); box-shadow: 8px 0 25px #0008; display: flex; flex-direction: column; }
+.editor-asset-drawer { position: absolute; left: 100%; top: 0; bottom: 0; z-index: 9; width: 716px; max-width: calc(100vw - 232px); background: var(--card); border-right: 1px solid var(--border); box-shadow: 8px 0 25px #0008; display: flex; flex-direction: column; }
 .editor-asset-drawer.is-expanded { width: min(884px, calc(100vw - 232px)); }
-.editor-asset-drawer > header { height: 40px; padding: 0 9px 0 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #333; }
+.editor-asset-drawer > header { height: 40px; padding: 0 9px 0 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
 .editor-asset-drawer > header > div { display: flex; gap: 2px; }
 /* 看板态展开覆盖面板：左列（var(--secondary) 搜索 + 分类行）+ 右列（主题 tab + 抽屉），纯覆盖不挤压 stage。
    实测：主蓝 #1a3bb7、面板底 #131415、rail/缩略图底 var(--secondary)、文字 #ccc，见 docs/board-asset-panel-sync.md */
@@ -270,7 +270,7 @@ kbd { margin-left: 24px; font: 11px monospace; color: #777; }
 .asset-overlay-panel.is-light .asset-family-thumb { background: #f2f3f5; border-color: #d9d9d9; }
 .asset-overlay-panel.is-light .asset-family-thumb > * { filter: invert(1) hue-rotate(180deg); }
 .asset-panel { display: flex; min-height: 0; flex: 1; overflow: hidden; }
-.asset-folders { width: 140px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0; background: #191919; border-right: 1px solid #333; }
+.asset-folders { width: 140px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0; background: var(--background); border-right: 1px solid var(--border); }
 .asset-folders-heading { padding: 14px 12px 9px; color: #828282; font-size: 11px; }
 .asset-folder-tree { flex: 1; overflow-y: auto; padding: 0 4px 12px; }
 /* .asset-folder-tree / .asset-folder-label 已无对应 TSX（素材库文件夹树移除），旧树组件规则一并删除 */
@@ -288,7 +288,7 @@ kbd { margin-left: 24px; font: 11px monospace; color: #777; }
 .asset-card-name { padding: 6px 2px 2px; color: #d4d4d4; font-size: 11px; }
 .asset-card-type { padding: 0 2px 2px; color: #7f8994; font-size: 10px; }
 /* 3D 编辑公共栏：搜索 + 资源库/资产库切换（山海鲸同款） */
-.library-common-bar { height: 46px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 10px; background: #18191a; border-bottom: 1px solid #333; }
+.library-common-bar { height: 46px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 10px; background: var(--card); border-bottom: 1px solid var(--border); }
 .library-common-bar .library-search { flex: 1; min-width: 0; }
 .library-switch { display: flex; gap: 2px; flex-shrink: 0; }
 .library-switch button { padding: 6px 16px; border: 0; border-radius: 3px; background: transparent; color: #b5b5b5; font-size: 13px; cursor: pointer; }
@@ -296,18 +296,18 @@ kbd { margin-left: 24px; font: 11px monospace; color: #777; }
 .library-switch button.is-active { background: #1677ff; color: #fff; }
 .library-bar-actions { display: flex; gap: 2px; flex-shrink: 0; }
 .asset-library-body { flex: 1; min-height: 0; display: flex; overflow: hidden; }
-.asset-subcolumn { width: 132px; flex-shrink: 0; overflow-y: auto; background: #1e1f20; border-right: 1px solid #333; padding: 6px 0 12px; }
+.asset-subcolumn { width: 132px; flex-shrink: 0; overflow-y: auto; background: var(--secondary); border-right: 1px solid var(--border); padding: 6px 0 12px; }
 .asset-subitem { display: flex; align-items: center; justify-content: space-between; width: 100%; height: 34px; padding: 0 10px 0 14px; border: 0; background: transparent; color: #c9c9c9; font-size: 12.5px; cursor: pointer; text-align: left; }
 .asset-subitem:hover { background: #2a2b2c; color: #ececec; }
 .asset-subitem.is-active { color: #3b9eff; }
 .asset-subitem .asset-subitem-arrow { color: #6f6f6f; }
 .asset-subitem.is-active .asset-subitem-arrow { color: #3b9eff; }
 .asset-subitem-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.asset-subsection { display: flex; align-items: center; gap: 5px; margin: 8px 8px 4px; padding: 0 4px 6px; color: #8a8a8a; font-size: 11px; border-bottom: 1px solid #333; }
+.asset-subsection { display: flex; align-items: center; gap: 5px; margin: 8px 8px 4px; padding: 0 4px 6px; color: #8a8a8a; font-size: 11px; border-bottom: 1px solid var(--border); }
 /* 三级分类 chips：二级栏目选中后顶部过滤行（山海鲸 3D 编辑同款，如 建筑物→住宅建筑/商业建筑/…） */
 .asset-subchips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
 .asset-subchips button { height: 26px; padding: 0 12px; border: 0; border-radius: 2px; background: #2b2d30; color: #c9c9c9; font-size: 12.5px; cursor: pointer; }
-.asset-subchips button:hover { background: #33363a; color: #ececec; }
+.asset-subchips button:hover { background: var(--border)63a; color: #ececec; }
 .asset-subchips button.is-active { background: #1677ff; color: #fff; }
 .model-import-dashed { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; justify-self: start; width: 100%; max-width: 116px; height: 116px; border: 1px dashed #5c5c5c; border-radius: 4px; background: transparent; color: #b9b9b9; font-size: 12px; cursor: pointer; }
 .model-import-dashed:hover, .model-import-dashed:focus-visible { border-color: #3b9eff; color: #e0e0e0; background: #232425; }
@@ -369,7 +369,7 @@ kbd { margin-left: 24px; font: 11px monospace; color: #777; }
 .board-page-tab-wrap { position: relative; display: flex; align-items: stretch; flex: 0 0 auto; }
 .board-page-tab-wrap .board-tab-close { position: absolute; right: 3px; top: 50%; transform: translateY(-50%); margin: 0; }
 .board-foreground-group.has-close .board-strip-tab { padding-right: 14px; }
-.board-strip-divider { flex: 0 0 1px; width: 1px; height: 100%; background: #33363a; }
+.board-strip-divider { flex: 0 0 1px; width: 1px; height: 100%; background: var(--border)63a; }
 .board-page-tabs { flex: 0 1 auto; min-width: 0; height: 100%; display: flex; overflow-x: auto; scrollbar-width: none; }
 .board-page-tabs::-webkit-scrollbar, .board-strip::-webkit-scrollbar { display: none; }
 .board-strip .board-page-tab { flex: 0 0 128px; width: 128px; gap: 7px; color: #e5e5e5; }
@@ -603,7 +603,7 @@ kbd { margin-left: 24px; font: 11px monospace; color: #777; }
 /* .component-tile 已无对应 TSX（组件目录改用 control-card），content 规则删除 */
 .component-tile span:last-child { font-size: 12px; }
 .resize-handle { position: absolute; width: 9px; height: 9px; background: #fff; border: 1px solid #3b95e7; z-index: 5; }.resize-handle.nw { left: -5px; top: -5px; cursor: nwse-resize; }.resize-handle.ne { right: -5px; top: -5px; cursor: nesw-resize; }.resize-handle.sw { left: -5px; bottom: -5px; cursor: nesw-resize; }.resize-handle.se { right: -5px; bottom: -5px; cursor: nwse-resize; }.resize-handle.n { left: calc(50% - 4px); top: -5px; cursor: ns-resize; }.resize-handle.s { left: calc(50% - 4px); bottom: -5px; cursor: ns-resize; }.resize-handle.w { left: -5px; top: calc(50% - 4px); cursor: ew-resize; }.resize-handle.e { right: -5px; top: calc(50% - 4px); cursor: ew-resize; }
-.metadata-panel h4 { font-size: 12px; font-weight: 500; color: #c8cdd5; margin: 12px 0; }.metadata-panel > [data-slot="button"] { margin-top: 10px; }.metadata-panel [data-slot="textarea"] { font: 11px/1.6 ui-monospace, monospace; }.field-error { color: #f58c83; font-size: 11px; margin: 8px 0; overflow-wrap: anywhere; }.interaction-rule { background: #20242b; padding: 9px; border: 1px solid #39424c; margin-bottom: 12px; border-radius: 4px; }.interaction-rule .property-field { flex-wrap: wrap; gap: 6px; }.saved-view { display: flex; justify-content: space-between; margin-top: 5px; border-bottom: 1px solid #333; }.day-presets, .history-actions { display: flex; gap: 5px; margin-top: 12px; flex-wrap: wrap; }
+.metadata-panel h4 { font-size: 12px; font-weight: 500; color: #c8cdd5; margin: 12px 0; }.metadata-panel > [data-slot="button"] { margin-top: 10px; }.metadata-panel [data-slot="textarea"] { font: 11px/1.6 ui-monospace, monospace; }.field-error { color: #f58c83; font-size: 11px; margin: 8px 0; overflow-wrap: anywhere; }.interaction-rule { background: var(--secondary); padding: 9px; border: 1px solid var(--border); margin-bottom: 12px; border-radius: 4px; }.interaction-rule .property-field { flex-wrap: wrap; gap: 6px; }.saved-view { display: flex; justify-content: space-between; margin-top: 5px; border-bottom: 1px solid var(--border); }.day-presets, .history-actions { display: flex; gap: 5px; margin-top: 12px; flex-wrap: wrap; }
 /* 昼夜切换预设：三个按钮等宽一行，与面板其它操作按钮组同款栅格 */
 .day-presets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .day-presets > [data-slot="button"] { min-width: 0; }
@@ -666,7 +666,7 @@ kbd { margin-left: 24px; font: 11px monospace; color: #777; }
 .data-filter-row > [data-slot="input"] { flex: 1; min-width: 0; }
 .data-filter-op { flex: 0 0 76px; }
 .board-canvas.is-outline { outline: 1px dashed rgba(78, 99, 240, 0.65); outline-offset: 5px; }
-.board-cover { width: 100%; border-radius: 6px; border: 1px solid #33373d; display: block; margin-bottom: 8px; }
+.board-cover { width: 100%; border-radius: 6px; border: 1px solid var(--border)73d; display: block; margin-bottom: 8px; }
 .layout-mode-row { display: flex; gap: 6px; }
 /* .layout-mode-row 已无对应 TSX，按钮规则删除 */
 .editor-properties { overflow: hidden; }
