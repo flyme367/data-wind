@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useState } from "react";
+import { Toaster } from "./components/ui/sonner";
 import LoginPage from "./pages/LoginPage";
 import HomePage from "./pages/HomePage";
 import WorkspacePage from "./pages/WorkspacePage";
@@ -25,7 +26,8 @@ export default function App() {
   const [route, setRouteState] = useState<AppRoute>(() => parseHash());
 
   useLayoutEffect(() => {
-    document.body.setAttribute("theme-mode", route.page === "login" ? "light" : "dark");
+    // shadcn 主题：工作台暗色 / 登录页亮色，切换 html 的 .dark class（Tailwind @custom-variant dark）
+    document.documentElement.classList.toggle("dark", route.page !== "login");
     document.title = route.page === "home" ? "xx可视化 · 工作台" : "xx可视化";
     setState({ route: route.page });
   }, [route.page]);
@@ -40,14 +42,19 @@ export default function App() {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
-  if (route.page === "login") return <LoginPage />;
-  if (route.page === "workspace") {
-    // 无 projectId 时回项目工作台（与原站路由行为一致）
-    return route.projectId ? (
-      <WorkspacePage key={route.projectId} projectId={route.projectId} />
-    ) : (
-      <HomePage />
-    );
-  }
-  return <HomePage />;
+  return (
+    <>
+      {route.page === "login" ? <LoginPage />
+        : route.page === "workspace" ? (
+          // 无 projectId 时回项目工作台（与原站路由行为一致）
+          route.projectId ? (
+            <WorkspacePage key={route.projectId} projectId={route.projectId} />
+          ) : (
+            <HomePage />
+          )
+        ) : <HomePage />}
+      {/* 全局 toast（原 Semi Toast/Notification 统一入口） */}
+      <Toaster position="top-center" offset={48} />
+    </>
+  );
 }

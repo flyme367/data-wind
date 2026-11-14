@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { version } from "./package.json" with { type: "json" };
 import { defineConfig, type Plugin } from "vite";
+import path from "node:path";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import SemiPlugin from "@douyinfe/semi-vite-plugin";
@@ -62,6 +63,9 @@ function parkMockPlugin(): Plugin {
 export default defineConfig({
   // Relative runtime assets keep an exported viewer portable under a subdirectory.
   base: "./",
+  resolve: {
+    alias: { "@": path.resolve(__dirname, "./src") },
+  },
   // 底部状态栏展示的应用版本（来自 package.json，编译期内联）
   define: { __DW_VERSION__: JSON.stringify(version) },
   plugins: [react(), tailwindcss(), SemiPlugin({ cssLayer: true }), parkMockPlugin()],
