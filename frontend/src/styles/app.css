@@ -176,7 +176,7 @@ kbd { margin-left: 24px; font: 11px monospace; color: #777; }
 .tree-materials button { border: 1px solid #646464; border-radius: 50%; aspect-ratio: 1; }
 .tree-materials p { grid-column: 1/-1; color: #777; font-size: 11px; line-height: 1.6; }
 /* 山海鲸式素材 rail：窄轨、图标在上文案在下 */
-.editor-asset-rail { width: 56px; flex-shrink: 0; overflow-y: auto; background: var(--card); border-right: 1px solid #282828; }
+.editor-asset-rail { width: 56px; flex-shrink: 0; overflow-y: auto; background: var(--card); border-right: 1px solid var(--border); }
 /* rail 分类项是原生 button（nav 直接子元素），图标为 IconPark 的 .i-icon span */
 .editor-asset-rail > button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; width: 100%; height: 52px; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; color: #bdbdbd; }
 .editor-asset-rail > button > .i-icon { color: #e5ac72; font-size: 17px; }
@@ -185,13 +185,13 @@ kbd { margin-left: 24px; font: 11px monospace; color: #777; }
 .editor-asset-rail > button.is-selected > .i-icon { color: #fff0dd; }
 .asset-rail-label { display: flex; align-items: center; justify-content: center; gap: 3px; width: 100%; font-size: 11px; line-height: 1; }
 /* 看板态 rail 收起为 49px 纯图标列（计数隐藏），展开态样式在覆盖面板内（.asset-panel-rail） */
-.editor-asset-rail.is-board { width: 49px; padding-top: 0; background: var(--secondary); overflow: hidden; }
+.editor-asset-rail.is-board { width: 49px; padding-top: 0; background: var(--card); overflow: hidden; }
 .editor-asset-rail.is-board > button { height: 52px; font-size: 12px; color: #cccccc; }
 .editor-asset-rail.is-board .asset-rail-count { display: none; }
 .editor-asset-rail.is-board > button.is-selected { background: #1a3bb7; color: #fff; }
 .editor-asset-rail.is-board > button.is-selected > .i-icon { color: #fff; }
 /* 山海鲸式：收起 rail 顶部搜索按钮（看板/3D 两态共用），点击展开菜单并聚焦搜索框 */
-.editor-asset-rail .asset-rail-search-trigger { width: 100%; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; border-bottom: 1px solid #282828; border-radius: 0; background: none; color: #8f8f8f; }
+.editor-asset-rail .asset-rail-search-trigger { width: 100%; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; padding: 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none; color: #8f8f8f; }
 .editor-asset-rail .asset-rail-search-trigger:hover { color: #fff; background: var(--border); }
 /* 3D 态搜索按钮与相邻分类项同款：52px 行高、橙色图标、nav 式悬停，按下呈现选中橙 */
 .editor-asset-rail.is-3d .asset-rail-search-trigger { height: 52px; color: #e5ac72; }
@@ -227,7 +227,7 @@ kbd { margin-left: 24px; font: 11px monospace; color: #777; }
   .asset-overlay-panel, .editor-asset-drawer, .asset-overlay-panel > .asset-panel-rail, .asset-overlay-panel > .asset-panel-main { animation: none; }
   .asset-overlay-panel, .editor-asset-drawer { transition: none; }
 }
-.asset-panel-rail { width: 184px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--secondary); }
+.asset-panel-rail { width: 184px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--card); }
 .asset-rail-search-row { flex-shrink: 0; height: 41px; display: flex; align-items: center; padding: 0 8px 0 6px; }
 .asset-rail-search { flex: 1; }
 .asset-rail-search [data-slot="input"] { background: var(--secondary); border-color: var(--border); }
@@ -805,7 +805,7 @@ html.dark .interaction-rule-modal {
 .editor-boot-header { display: flex; align-items: center; gap: 3px; height: 36px; flex-shrink: 0; padding: 0 8px; background: var(--card); border-bottom: 1px solid var(--card); }
 .editor-boot-body { flex: 1; min-height: 0; display: flex; }
 .editor-boot-tree { width: 170px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px; padding: 12px; background: var(--background); border-right: 1px solid var(--border); }
-.editor-boot-rail { width: 56px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 22px; background: var(--card); border-right: 1px solid #282828; }
+.editor-boot-rail { width: 56px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 22px; background: var(--card); border-right: 1px solid var(--border); }
 .editor-boot-stage { flex: 1; min-width: 120px; background: #111416; background-image: radial-gradient(#373b3d 1px, transparent 1.5px); background-size: 18px 18px; display: flex; align-items: center; justify-content: center; }
 .editor-boot-stage-inner { width: 46%; max-width: 520px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
 .editor-boot-hint { margin: 0; color: #9a9a9a; font-size: 13px; }
