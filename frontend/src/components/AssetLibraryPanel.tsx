@@ -1,5 +1,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { Button, Empty, Input, Toast, Tooltip } from "@douyinfe/semi-ui";
+import { Button } from "@/components/ui/button";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Empty } from "@/components/ui-ext/empty";
+import { Toast } from "@/lib/toast";
 import { Cube, FullScreen, Layers, Plus, Search, ViewGridList } from "@icon-park/react";
 import { importModelFiles, modelAssetSceneNode } from "../engine/modelAsset";
 import { deleteModelAsset, getModelAsset, saveModelAsset, type ModelAssetMeta } from "../state/modelAssets";
@@ -29,8 +33,13 @@ export default function AssetLibraryPanel({ category, libraryExpanded, onToggleL
   const [query, setQuery] = useState("");
   return <>
     <div className="library-common-bar">
-      <Input className="library-search" size="small" prefix={<Search />} placeholder="搜索组件" value={query}
-        onChange={setQuery} showClear aria-label="搜索组件" />
+      <InputGroup className="library-search h-7">
+        <InputGroupAddon align="inline-start"><Search size={14} /></InputGroupAddon>
+        <InputGroupInput className="h-7 text-xs" placeholder="搜索组件" value={query}
+          onChange={(event) => setQuery(event.target.value)} aria-label="搜索组件" />
+        {query && <InputGroupAddon align="inline-end"><InputGroupButton size="icon-xs" aria-label="清空搜索"
+          onClick={() => setQuery("")}>×</InputGroupButton></InputGroupAddon>}
+      </InputGroup>
       <div className="library-switch" role="tablist" aria-label="素材库切换">
         <button type="button" role="tab" aria-selected={tab === "resource"} className={tab === "resource" ? "is-active" : ""}
           onClick={() => setTab("resource")}>资源库</button>
@@ -38,9 +47,10 @@ export default function AssetLibraryPanel({ category, libraryExpanded, onToggleL
           onClick={() => setTab("asset")}>资产库</button>
       </div>
       <div className="library-bar-actions">
-        <Tooltip content={libraryExpanded ? "收起资源库" : "展开资源库"}><span><Button size="small" theme="borderless" icon={<FullScreen />}
-          aria-label={libraryExpanded ? "收起资源库" : "展开资源库"} onClick={onToggleLibrary} /></span></Tooltip>
-        <Button size="small" theme="borderless" aria-label="关闭资源库" onClick={onClose}>×</Button>
+        <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm"
+          aria-label={libraryExpanded ? "收起资源库" : "展开资源库"} onClick={onToggleLibrary} />}><FullScreen /></TooltipTrigger>
+          <TooltipContent>{libraryExpanded ? "收起资源库" : "展开资源库"}</TooltipContent></Tooltip>
+        <Button variant="ghost" size="sm" aria-label="关闭资源库" onClick={onClose}>×</Button>
       </div>
     </div>
     <div className="asset-library-body">
@@ -192,7 +202,7 @@ function ResourceLibrary({ category, query }: { category: string; query: string 
         : findLabel(folders) ?? "全部素材";
   const hint = category === "材质" ? "选中对象后点击套用" : category === "场景" ? "整组添加 · 支持撤销" : "点击添加 · 模型可拖入";
   const importedCards = imported.map((asset) =>
-    <Button key={asset.id} className="asset-card" theme="borderless" type="tertiary"
+    <Button key={asset.id} className="asset-card" variant="ghost"
       title={`${asset.name} · ${asset.triangles} 个三角面`} onClick={() => addImported(asset)}>
       <span className="asset-thumbnail" style={{ "--asset-color": "#e5ac72" } as React.CSSProperties}><Cube size={40} /></span>
       <span className="asset-card-name">{asset.name}</span><small className="asset-card-type">我的模型</small>
@@ -240,7 +250,7 @@ function ResourceLibrary({ category, query }: { category: string; query: string 
           <div className="asset-results-heading"><strong>我的模型</strong><span>点击添加到场景</span></div>
           <div className="asset-grid">{importedCards}</div>
         </>}
-        {filtered.length ? <div className="asset-grid">{filtered.map((item) => <Button key={item.id} className="asset-card" theme="borderless" type="tertiary"
+        {filtered.length ? <div className="asset-grid">{filtered.map((item) => <Button key={item.id} className="asset-card" variant="ghost"
           title={`${item.name} · ${item.category}`}
           draggable={item.type === "model" && !item.primitive} onDragStart={(event) => {
             if (item.type === "model") {
@@ -316,7 +326,7 @@ function UserAssetLibrary({ query }: { query: string }) {
     <div className="asset-results-heading"><strong>我的素材</strong><span>{filtered.length} 个素材</span></div>
     <div className="asset-results-hint">选中场景对象后右键「添加到资产库」保存 · 点击添加到场景</div>
     {filtered.length ? <div className="asset-grid">{filtered.map((asset) =>
-      <Button key={asset.id} className="asset-card" theme="borderless" type="tertiary"
+      <Button key={asset.id} className="asset-card" variant="ghost"
         title={`${asset.name} · 点击添加到场景`} onClick={() => add(asset)}>
         <span className="asset-thumbnail" style={{ "--asset-color": "#8fb7e8" } as React.CSSProperties}><Layers size={40} /></span>
         <span className="asset-card-name">{asset.name}</span><small className="asset-card-type">资产</small>

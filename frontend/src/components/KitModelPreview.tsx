@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Button, Modal, Select } from "@douyinfe/semi-ui";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ReferenceKitPiece } from "../data/kitRuntime";
 import { applyKitSceneMaterials, kitSceneGeometry, loadKitSceneTextures, loadPreviewGeometry, previewModelUrl, previewSceneFrame,
   type KitSceneGeometry } from "../engine/kitScenePreview";
@@ -96,10 +98,13 @@ function ModelCanvas({ scene, label, selected, onSelect }: {
     : "正在读取模型…");
   return <div className="kit-model-preview">
     {onSelect && <div className="kit-model-preview-toolbar">
-      <Select size="small" aria-label="预览视角" value={String(cameraIndex)} disabled={!frame?.instances.length}
-        optionList={frame?.cameras.map((item, index) => ({ value: String(index), label: item.name }))}
-        onChange={value => setCameraIndex(Number(value))}/>
-      <Button size="small" onClick={() => { controls.current = null; redraw(); }}>重置视角</Button>
+      <Select aria-label="预览视角" value={String(cameraIndex)} disabled={!frame?.instances.length}
+        onValueChange={value => typeof value === "string" && setCameraIndex(Number(value))}>
+        <SelectTrigger size="sm" className="w-36"><SelectValue /></SelectTrigger>
+        <SelectContent>{frame?.cameras.map((item, index) =>
+          <SelectItem key={index} value={String(index)}>{item.name}</SelectItem>)}</SelectContent>
+      </Select>
+      <Button variant="outline" size="sm" onClick={() => { controls.current = null; redraw(); }}>重置视角</Button>
     </div>}
     <canvas ref={canvas} aria-label={`${label}几何预览`} onPointerDown={event => {
       if (event.button !== 0 || !frame?.instances.length) return;
@@ -141,10 +146,13 @@ export default function KitModelPreview({ source, label, pieces }: {
     [source, label, pieces]);
   if (!url) return null;
   return <>
-    <Button size="small" theme="borderless" onClick={() => setOpen(true)}>预览模型几何</Button>
-    {open && <Modal title={label} visible footer={null} width={760} onCancel={() => setOpen(false)}>
-      <ModelCanvas key={scene.assetKey + scene.textureKey} scene={scene} label={label}/>
-    </Modal>}
+    <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>预览模型几何</Button>
+    {open && <Dialog open onOpenChange={(next) => { if (!next) setOpen(false); }}>
+      <DialogContent className="max-w-[760px]">
+        <DialogHeader><DialogTitle>{label}</DialogTitle></DialogHeader>
+        <ModelCanvas key={scene.assetKey + scene.textureKey} scene={scene} label={label}/>
+      </DialogContent>
+    </Dialog>}
   </>;
 }
 
@@ -155,9 +163,12 @@ export function KitScenePreview({ pieces, selected, edit, onSelect }: {
   const scene = useMemo(() => kitSceneGeometry(pieces, edit), [pieces, edit?.path, edit?.state]);
   if (!scene.objects.length && !open) return null;
   return <>
-    <Button size="small" theme="borderless" onClick={() => setOpen(true)}>预览场景几何</Button>
-    {open && <Modal title="三维场景几何" visible footer={null} width={760} onCancel={() => setOpen(false)}>
-      <ModelCanvas key={scene.assetKey + scene.textureKey} label="场景" scene={scene} selected={selected} onSelect={onSelect}/>
-    </Modal>}
+    <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>预览场景几何</Button>
+    {open && <Dialog open onOpenChange={(next) => { if (!next) setOpen(false); }}>
+      <DialogContent className="max-w-[760px]">
+        <DialogHeader><DialogTitle>三维场景几何</DialogTitle></DialogHeader>
+        <ModelCanvas key={scene.assetKey + scene.textureKey} label="场景" scene={scene} selected={selected} onSelect={onSelect}/>
+      </DialogContent>
+    </Dialog>}
   </>;
 }

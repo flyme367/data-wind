@@ -1,6 +1,11 @@
 import { useState } from "react";
-import { Button, Input, InputNumber, Modal, Select, Toast } from "@douyinfe/semi-ui";
-import { Plus, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { NumberInput } from "@/components/ui-ext/number-input";
+import { Delete, Plus } from "@icon-park/react";
+import { Toast } from "@/lib/toast";
 import { kitMetadata, kitPrivateData, kitRows } from "../data/kitRuntime";
 import { sanitizeDataConditions, type BoardDataCondition, type DataConditionRule } from "../data/dataConditions";
 import { useStore } from "../state/store";
@@ -41,61 +46,81 @@ export default function DataConditionsEditor({ onClose }: { onClose: () => void 
       { value: "$reverse-row", label: "倒数行号" }, { value: "$count", label: "数据条数" });
     return options;
   };
-  return <Modal title="数据条件" visible onCancel={onClose} okText="确认" cancelText="取消" width={1040}
-    onOk={() => {
-      if (conditions.some(item => !item.name.trim())) { Toast.warning("请填写数据条件名称"); return; }
-      getSceneBridge().post({ type: "configure", patch: { boardDataConditions: sanitizeDataConditions(conditions) } }); onClose();
-    }}>
-    <div className="data-conditions-editor">
-      <aside>
-        <Button block icon={<Plus size={14}/>} onClick={() => {
-          const condition = { id: crypto.randomUUID(), name: `条件${conditions.length + 1}`, groups: [[newRule()]] };
-          setConditions(items => [...items, condition]); setSelectedId(condition.id);
-        }}>添加条件</Button>
-        {conditions.map(condition => <div className="data-condition-item" key={condition.id}>
-          <button type="button" aria-pressed={selectedId === condition.id} onClick={() => setSelectedId(condition.id)}>{condition.name}</button>
-          <Button size="small" theme="borderless" aria-label={`删除${condition.name}`} icon={<Trash2 size={13}/>}
-            onClick={() => { const next = conditions.filter(item => item.id !== condition.id); setConditions(next);
-              if (selectedId === condition.id) setSelectedId(next[0]?.id ?? ""); }}/>
-        </div>)}
-      </aside>
-      <section>
-        {!current ? <p>添加条件后，可设置多组筛选规则。</p> : <>
-          <div className="data-condition-heading"><label>条件名称</label><Input size="small" aria-label="条件名称" value={current.name}
-            onChange={name => patchCurrent({ name })}/>
-            <Button size="small" icon={<Plus size={13}/>} onClick={() => patchCurrent({ groups: [...current.groups, [newRule()]] })}>新建分组</Button>
-          </div>
-          <p className="properties-note">组内条件同时满足；任一组满足即可。数据字段可使用行号、倒数行号或数据条数。</p>
-          {current.groups.map((group, groupIndex) => <div className="data-condition-group" key={groupIndex}>
-            <div className="data-condition-group-heading"><span>{groupIndex ? "或 · " : ""}分组 {groupIndex + 1}</span>
-              <Button size="small" theme="borderless" icon={<Plus size={13}/>} onClick={() => patchCurrent({
-                groups: current.groups.map((items, at) => at === groupIndex ? [...items, newRule()] : items) })}>新建条件</Button>
-              <Button size="small" theme="borderless" aria-label={`删除分组${groupIndex + 1}`} icon={<Trash2 size={13}/>}
-                onClick={() => patchCurrent({ groups: current.groups.filter((_, at) => at !== groupIndex) })}/>
-            </div>
-            {group.map((rule, index) => <div className="data-condition-rule" key={index}>
-              <span>{index ? "且" : ""}</span>
-              <Select size="small" aria-label={`第${groupIndex + 1}组第${index + 1}项数据源`} value={rule.sourceId}
-                optionList={sourceChoices} onChange={value => patchRule(groupIndex, index, { sourceId: String(value), field: "",
-                  selector: value === "$current" ? "each" : "any" })}/>
-              <Select size="small" filter allowCreate aria-label={`第${groupIndex + 1}组第${index + 1}项字段`} value={rule.field || undefined}
-                placeholder="字段/参数" optionList={fieldsFor(rule.sourceId)} onChange={field => patchRule(groupIndex, index, { field: String(field) })}/>
-              {rule.sourceId !== "builtin:project-params" && <Select size="small" aria-label={`第${groupIndex + 1}组第${index + 1}项判断方式`}
-                value={rule.selector} optionList={selectors} onChange={selector => patchRule(groupIndex, index, { selector: selector as DataConditionRule["selector"] })}/>}
-              {rule.selector === "index" && rule.sourceId !== "builtin:project-params" && <InputNumber size="small" min={1}
-                aria-label={`第${groupIndex + 1}组第${index + 1}项行号`} value={rule.index}
-                onChange={value => typeof value === "number" && patchRule(groupIndex, index, { index: value })}/>}
-              <Select size="small" aria-label={`第${groupIndex + 1}组第${index + 1}项条件`} value={rule.operator}
-                optionList={operators} onChange={operator => patchRule(groupIndex, index, { operator: operator as DataConditionRule["operator"] })}/>
-              {!['∅', '!∅'].includes(rule.operator) && <Input size="small" aria-label={`第${groupIndex + 1}组第${index + 1}项值`}
-                value={rule.value} onChange={value => patchRule(groupIndex, index, { value })}/>}
-              <Button size="small" theme="borderless" aria-label={`删除第${groupIndex + 1}组第${index + 1}项`} icon={<Trash2 size={13}/>}
-                onClick={() => patchCurrent({ groups: current.groups.map((items, at) => at === groupIndex
-                  ? items.filter((_, position) => position !== index) : items) })}/>
-            </div>)}
+  const confirm = () => {
+    if (conditions.some(item => !item.name.trim())) { Toast.warning("请填写数据条件名称"); return; }
+    getSceneBridge().post({ type: "configure", patch: { boardDataConditions: sanitizeDataConditions(conditions) } }); onClose();
+  };
+  return <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+    <DialogContent className="sm:max-w-[1040px]">
+      <DialogHeader><DialogTitle>数据条件</DialogTitle></DialogHeader>
+      <div className="data-conditions-editor">
+        <aside>
+          <Button className="w-full" onClick={() => {
+            const condition = { id: crypto.randomUUID(), name: `条件${conditions.length + 1}`, groups: [[newRule()]] };
+            setConditions(items => [...items, condition]); setSelectedId(condition.id);
+          }}><Plus size={14}/>添加条件</Button>
+          {conditions.map(condition => <div className="data-condition-item" key={condition.id}>
+            <button type="button" aria-pressed={selectedId === condition.id} onClick={() => setSelectedId(condition.id)}>{condition.name}</button>
+            <Button size="sm" variant="ghost" aria-label={`删除${condition.name}`}
+              onClick={() => { const next = conditions.filter(item => item.id !== condition.id); setConditions(next);
+                if (selectedId === condition.id) setSelectedId(next[0]?.id ?? ""); }}><Delete size={13}/></Button>
           </div>)}
-        </>}
-      </section>
-    </div>
-  </Modal>;
+        </aside>
+        <section>
+          {!current ? <p>添加条件后，可设置多组筛选规则。</p> : <>
+            <div className="data-condition-heading"><label>条件名称</label><Input className="h-7 text-xs" aria-label="条件名称" value={current.name}
+              onChange={event => patchCurrent({ name: event.target.value })}/>
+              <Button size="sm" onClick={() => patchCurrent({ groups: [...current.groups, [newRule()]] })}><Plus size={13}/>新建分组</Button>
+            </div>
+            <p className="properties-note">组内条件同时满足；任一组满足即可。数据字段可使用行号、倒数行号或数据条数。</p>
+            {current.groups.map((group, groupIndex) => <div className="data-condition-group" key={groupIndex}>
+              <div className="data-condition-group-heading"><span>{groupIndex ? "或 · " : ""}分组 {groupIndex + 1}</span>
+                <Button size="sm" variant="ghost" onClick={() => patchCurrent({
+                  groups: current.groups.map((items, at) => at === groupIndex ? [...items, newRule()] : items) })}><Plus size={13}/>新建条件</Button>
+                <Button size="sm" variant="ghost" aria-label={`删除分组${groupIndex + 1}`}
+                  onClick={() => patchCurrent({ groups: current.groups.filter((_, at) => at !== groupIndex) })}><Delete size={13}/></Button>
+              </div>
+              {group.map((rule, index) => <div className="data-condition-rule" key={index}>
+                <span>{index ? "且" : ""}</span>
+                <Select items={sourceChoices} value={rule.sourceId} onValueChange={value => patchRule(groupIndex, index, { sourceId: String(value), field: "",
+                  selector: value === "$current" ? "each" : "any" })}>
+                  <SelectTrigger className="w-full" size="sm" aria-label={`第${groupIndex + 1}组第${index + 1}项数据源`}><SelectValue/></SelectTrigger>
+                  <SelectContent>{sourceChoices.map(item => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
+                </Select>
+                {/* Semi filter + allowCreate → 原生 datalist 组合输入，既可下拉选择也可手填字段名 */}
+                <Input className="h-7 text-xs" list={`condition-field-${groupIndex}-${index}`} aria-label={`第${groupIndex + 1}组第${index + 1}项字段`}
+                  placeholder="字段/参数" value={rule.field} onChange={event => patchRule(groupIndex, index, { field: event.target.value })}/>
+                <datalist id={`condition-field-${groupIndex}-${index}`}>
+                  {fieldsFor(rule.sourceId).map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
+                </datalist>
+                {rule.sourceId !== "builtin:project-params" && <Select items={selectors}
+                  aria-label={`第${groupIndex + 1}组第${index + 1}项判断方式`}
+                  value={rule.selector} onValueChange={selector => patchRule(groupIndex, index, { selector: selector as DataConditionRule["selector"] })}>
+                  <SelectTrigger className="w-full" size="sm" aria-label={`第${groupIndex + 1}组第${index + 1}项判断方式`}><SelectValue/></SelectTrigger>
+                  <SelectContent>{selectors.map(item => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
+                </Select>}
+                {rule.selector === "index" && rule.sourceId !== "builtin:project-params" && <NumberInput size="small" min={1}
+                  aria-label={`第${groupIndex + 1}组第${index + 1}项行号`} value={rule.index}
+                  onChange={value => typeof value === "number" && patchRule(groupIndex, index, { index: value })}/>}
+                <Select items={operators} value={rule.operator}
+                  onValueChange={operator => patchRule(groupIndex, index, { operator: operator as DataConditionRule["operator"] })}>
+                  <SelectTrigger className="w-full" size="sm" aria-label={`第${groupIndex + 1}组第${index + 1}项条件`}><SelectValue/></SelectTrigger>
+                  <SelectContent>{operators.map(item => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
+                </Select>
+                {!['∅', '!∅'].includes(rule.operator) && <Input className="h-7 text-xs" aria-label={`第${groupIndex + 1}组第${index + 1}项值`}
+                  value={rule.value} onChange={event => patchRule(groupIndex, index, { value: event.target.value })}/>}
+                <Button size="sm" variant="ghost" aria-label={`删除第${groupIndex + 1}组第${index + 1}项`}
+                  onClick={() => patchCurrent({ groups: current.groups.map((items, at) => at === groupIndex
+                    ? items.filter((_, position) => position !== index) : items) })}><Delete size={13}/></Button>
+              </div>)}
+            </div>)}
+          </>}
+        </section>
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onClose}>取消</Button>
+        <Button onClick={confirm}>确认</Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>;
 }

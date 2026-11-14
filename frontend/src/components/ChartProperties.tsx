@@ -1,9 +1,52 @@
-import { Button, Collapse, Select, Switch, Toast } from "@douyinfe/semi-ui";
-import { useRef, useState, type RefObject } from "react";
+import { Children, cloneElement, isValidElement, useRef, useState, type ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Toast } from "@/lib/toast";
+import { Down } from "@icon-park/react";
 import type { SceneNode } from "../types";
 import { chartCapabilities, chartColorCount, chartRegularCartesian, chartSignedScaleAxis, chartSupportsRanking } from "../data/chartCatalog";
 import { widgetFontFamilies } from "../data/editor";
 import { BufferedInput, ColorField, Field, NumberField } from "./PropertyFields";
+
+/** 属性面板折叠分区：受控 Collapsible，展开态由 Panels 的 Set 集中管理。 */
+function Panel({ itemKey, header, open = false, onOpenChange, children }: {
+  itemKey: string; header: ReactNode; open?: boolean; onOpenChange?: (open: boolean) => void; children?: ReactNode;
+}) {
+  return <Collapsible open={open} onOpenChange={onOpenChange} data-panel={itemKey}>
+    <CollapsibleTrigger className="properties-collapse-header" aria-label={typeof header === "string" ? header : undefined}>
+      <span className="flex-1 text-left">{header}</span>
+      <Down theme="outline" size={12} className="shrink-0 transition-transform" style={{ transform: open ? undefined : "rotate(-90deg)" }}/>
+    </CollapsibleTrigger>
+    <CollapsibleContent className="properties-collapse-content">{children}</CollapsibleContent>
+  </Collapsible>;
+}
+function Panels({ defaultKeys = [], className, children }: {
+  defaultKeys?: string[]; className?: string; children?: ReactNode;
+}) {
+  const [openKeys, setOpenKeys] = useState<Set<string>>(() => new Set(defaultKeys));
+  const toggle = (itemKey: string, next: boolean) => setOpenKeys(keys => {
+    const update = new Set(keys); if (next) update.add(itemKey); else update.delete(itemKey); return update;
+  });
+  return <div className={className}>{Children.map(children, child => {
+    if (!isValidElement(child)) return child;
+    const itemKey = (child.props as { itemKey?: unknown }).itemKey;
+    if (typeof itemKey !== "string") return child;
+    return cloneElement(child as React.ReactElement<React.ComponentProps<typeof Panel>>, {
+      open: openKeys.has(itemKey), onOpenChange: next => toggle(itemKey, next),
+    });
+  })}</div>;
+}
+/** Semi Select → shadcn Select：受控 value + onValueChange，optionList 展开成 SelectItem。 */
+function SelectField({ label, value, options, disabled, onChange }: {
+  label?: string; value: string; options: readonly { value: string; label: string }[]; disabled?: boolean; onChange: (value: string) => void;
+}) {
+  return <Select value={value} onValueChange={value => typeof value === "string" && onChange(value)} disabled={disabled}>
+    <SelectTrigger aria-label={label} size="sm" className="w-full"><SelectValue/></SelectTrigger>
+    <SelectContent>{options.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+  </Select>;
+}
 
 /** 图表参数存于组件自己的 data.chart，画布、预览与导出使用同一份数据。 */
 export default function ChartProperties({ node, patchChart }: {
@@ -69,7 +112,7 @@ export default function ChartProperties({ node, patchChart }: {
   const updateCondition = (index: number, patch: Record<string, unknown>) =>
     set("colorConditions", conditions.map((condition, i) => i === index ? { ...condition, ...patch } : condition));
   const toggle = (label: string, key: string, fallback = true) => <Field label={label}>
-    <Switch size="small" aria-label={label} disabled={locked} checked={flag(key, fallback)} onChange={value => set(key, value)}/>
+    <Switch size="sm" aria-label={label} disabled={locked} checked={flag(key, fallback)} onCheckedChange={value => set(key, value)}/>
   </Field>;
   const number = (label: string, key: string, fallback: number, min: number, max: number, step = 1) =>
     <NumberField label={label} value={num(key, fallback)} min={min} max={max} step={step} disabled={locked} onChange={value => set(key, value)}/>;
@@ -82,10 +125,10 @@ export default function ChartProperties({ node, patchChart }: {
       <NumberField label={`${label}不透明度 (%)`} value={Math.round(alpha / 255 * 100)} min={0} max={100} disabled={locked}
         onChange={value => set(key, compose(hex, Math.max(0, Math.min(100, value)) * 255 / 100))}/></>;
   };
-  const imageField = (label: string, key: string, input: RefObject<HTMLInputElement | null>) => <>
+  const imageField = (label: string, key: string, input: React.RefObject<HTMLInputElement | null>) => <>
     <Field label={label}><BufferedInput label={`${label}地址`} value={String(chart[key] ?? "")}
       disabled={locked} onChange={value => set(key, value)}/></Field>
-    <Button size="small" disabled={locked} onClick={() => input.current?.click()}>选择本地图片</Button>
+    <Button size="sm" disabled={locked} onClick={() => input.current?.click()}>选择本地图片</Button>
     <input hidden ref={input} type="file" aria-label={`选择${label}`} accept="image/png,image/jpeg,image/webp,image/gif" onChange={event => {
       const file = event.target.files?.[0]; event.target.value = ""; if (!file) return;
       if (file.size > 1_500_000) { Toast.error("请选择小于 1.5 MB 的图片"); return; }
@@ -136,9 +179,9 @@ export default function ChartProperties({ node, patchChart }: {
     { value: "squareEmpty", label: "空心方块" }, { value: "roundSquare", label: "圆角方块" },
     { value: "triangle", label: "三角形" }, { value: "diamond", label: "菱形" }, { value: "image", label: "自定义图片" }];
   const legendFontFields = (prefix: "legend" | "legendPage", label: string) => <>
-    <Field label={`${label}字体`}><Select size="small" aria-label={`${label}字体`} disabled={locked}
+    <Field label={`${label}字体`}><SelectField label={`${label}字体`} disabled={locked}
       value={String(chart[`${prefix}FontFamily`] ?? "sans-serif")}
-      optionList={[{ value: "sans-serif", label: "sans-serif" }, ...widgetFontFamilies]}
+      options={[{ value: "sans-serif", label: "sans-serif" }, ...widgetFontFamilies]}
       onChange={value => set(`${prefix}FontFamily`, value)}/></Field>
     {toggle(`${label}加粗`, `${prefix}Bold`, false)}
     {toggle(`${label}倾斜`, `${prefix}Italic`, false)}
@@ -149,9 +192,9 @@ export default function ChartProperties({ node, patchChart }: {
     const label = axis === "Right" ? "右轴" : `${axis} 轴`;
     const key = (name: string) => `axis${name}${axis}`;
     return <>
-      <Field label={`${label}刻度字体`}><Select size="small" aria-label={`${label}刻度字体`} disabled={locked}
+      <Field label={`${label}刻度字体`}><SelectField label={`${label}刻度字体`} disabled={locked}
         value={String(chart[key("FontFamily")] ?? "sans-serif")}
-        optionList={[{ value: "sans-serif", label: "sans-serif" }, ...widgetFontFamilies]}
+        options={[{ value: "sans-serif", label: "sans-serif" }, ...widgetFontFamilies]}
         onChange={value => set(key("FontFamily"), value)}/></Field>
       {toggle(`${label}刻度加粗`, key("Bold"), false)}
       {toggle(`${label}刻度倾斜`, key("Italic"), false)}
@@ -173,8 +216,8 @@ export default function ChartProperties({ node, patchChart }: {
     if (!options.some(option => option.value === String(current))) {
       options.push({ value: String(current), label: `${right ? current : -current}°` });
     }
-    return <Field label={label}><Select size="small" aria-label={label} disabled={locked} value={String(current)}
-      optionList={options} onChange={value => set(key, Number(value))}/></Field>;
+    return <Field label={label}><SelectField label={label} disabled={locked} value={String(current)}
+      options={options} onChange={value => set(key, Number(value))}/></Field>;
   };
   const valueRange = (right = false) => {
     const axis = signedAxis ?? "Y";
@@ -185,15 +228,15 @@ export default function ChartProperties({ node, patchChart }: {
     const interval = right ? "rightAxisInterval" : `axisInterval${axis}`;
     const label = right ? "右轴刻度范围" : `${axis} 轴刻度范围`;
     return <>
-      <Field label={label}><Select size="small" aria-label={label} disabled={locked}
-        value={String(chart[mode] ?? "adaptive")} optionList={[
+      <Field label={label}><SelectField label={label} disabled={locked}
+        value={String(chart[mode] ?? "adaptive")} options={[
           { value: "adaptive", label: "自适应" }, { value: "custom", label: "自定义" },
         ]} onChange={value => set(mode, value)}/></Field>
       {chart[mode] === "custom" && <>
         {number(right ? "右轴最小刻度值" : `${axis} 轴最小刻度值`, minimum, 0, -1e12, 1e12, 0.1)}
         {number(right ? "右轴最大刻度值" : `${axis} 轴最大刻度值`, maximum, 100, -1e12, 1e12, 0.1)}
-        <Field label="刻度间隔方式"><Select size="small" aria-label="刻度间隔方式" disabled={locked}
-          value={String(chart[intervalMode] ?? "auto")} optionList={[
+        <Field label="刻度间隔方式"><SelectField label="刻度间隔方式" disabled={locked}
+          value={String(chart[intervalMode] ?? "auto")} options={[
             { value: "auto", label: "自适应" }, { value: "value", label: "数值" }, { value: "number", label: "数量" },
           ]} onChange={value => set(intervalMode, value)}/></Field>
         {chart[intervalMode] !== undefined && chart[intervalMode] !== "auto"
@@ -206,42 +249,42 @@ export default function ChartProperties({ node, patchChart }: {
   };
 
   return <>{chart.codeCompatibility === false && <p className="properties-note">示例使用内置图形渲染；ECharts 自定义代码尚未接入。</p>}
-  <Collapse expandIconPosition="left" className="properties-collapse" defaultActiveKey={["color", "shape"]}>
-    <Collapse.Panel header={categoryPalette ? "数据颜色" : "颜色"} itemKey="color"><section className="property-section">
+  <Panels className="properties-collapse" defaultKeys={["color", "shape"]}>
+    <Panel header={categoryPalette ? "数据颜色" : "颜色"} itemKey="color"><section className="property-section">
       {colorList.map((value, index) => <div className="chart-palette-entry" key={index}>
         <ColorField label={`数据颜色 ${index + 1}`} value={value} disabled={locked} onChange={value => setColor(index, value)}/>
-        {categoryPalette && colorList.length > 1 && <Button size="small" theme="borderless" type="tertiary" disabled={locked}
+        {categoryPalette && colorList.length > 1 && <Button size="sm" variant="ghost" disabled={locked}
           aria-label={`删除数据颜色 ${index + 1}`} onClick={() => patchChart({ colors: colorList.filter((_, i) => i !== index), paletteCycle: true })}>×</Button>}
       </div>)}
-      {categoryPalette && <Button size="small" disabled={locked || colorList.length >= 30}
+      {categoryPalette && <Button size="sm" disabled={locked || colorList.length >= 30}
         onClick={() => patchChart({ colors: [...colorList, palette[colorList.length % palette.length]], paletteCycle: true })}>添加颜色</Button>}
       {regularCartesian && bars && <div className="chart-conditions">
         <div className="chart-conditions-title">条件样式</div>
         {conditions.map((condition, index) => <div className="chart-reference-line" key={index}>
-          <Field label={`规则 ${index + 1}`}><Button size="small" disabled={locked}
+          <Field label={`规则 ${index + 1}`}><Button size="sm" disabled={locked}
             onClick={() => set("colorConditions", conditions.filter((_, i) => i !== index))}>删除</Button></Field>
           <Field label="条件字段"><BufferedInput label={`规则${index + 1}条件字段`} value={String(condition.field ?? "value")}
             disabled={locked} onChange={value => updateCondition(index, { field: value })}/></Field>
-          <Field label="判断方式"><Select size="small" aria-label={`规则${index + 1}判断方式`} disabled={locked}
-            value={String(condition.operator ?? "gte")} optionList={[
+          <Field label="判断方式"><SelectField label={`规则${index + 1}判断方式`} disabled={locked}
+            value={String(condition.operator ?? "gte")} options={[
               { value: "gt", label: "大于" }, { value: "gte", label: "大于等于" }, { value: "lt", label: "小于" },
               { value: "lte", label: "小于等于" }, { value: "eq", label: "等于" }, { value: "ne", label: "不等于" },
             ]} onChange={value => updateCondition(index, { operator: value })}/></Field>
           <Field label="比较值"><BufferedInput label={`规则${index + 1}比较值`} value={String(condition.value ?? "0")}
             disabled={locked} onChange={value => updateCondition(index, { value })}/></Field>
-          <Field label="作用系列"><Select size="small" aria-label={`规则${index + 1}作用系列`} disabled={locked}
-            value={String(condition.series ?? "all")} optionList={[
+          <Field label="作用系列"><SelectField label={`规则${index + 1}作用系列`} disabled={locked}
+            value={String(condition.series ?? "all")} options={[
               { value: "all", label: "全部" }, ...Array.from({ length: Math.min(3, colorCount) }, (_, i) =>
                 ({ value: String(i + 1), label: `系列 ${i + 1}` })),
             ]} onChange={value => updateCondition(index, { series: value })}/></Field>
           <ColorField label="条件颜色" value={String(condition.color ?? "#ff6b6b")} disabled={locked}
             onChange={value => updateCondition(index, { color: value })}/>
         </div>)}
-        <Button size="small" disabled={locked || conditions.length >= 32} onClick={() => set("colorConditions", [...conditions,
+        <Button size="sm" disabled={locked || conditions.length >= 32} onClick={() => set("colorConditions", [...conditions,
           { field: "value", operator: "gte", value: "0", series: "all", color: "#ff6b6b" }])}>添加条件样式</Button>
       </div>}
-    </section></Collapse.Panel>
-    {canLabel && <Collapse.Panel header="图形文本" itemKey="labels"><section className="property-section">
+    </section></Panel>
+    {canLabel && <Panel header="图形文本" itemKey="labels"><section className="property-section">
       {(lineTabAvailable || rankingChart) && <div className="chart-label-tabs" role="tablist" aria-label="图形文本类型">
         <button type="button" role="tab" aria-selected={activeLabelTab === "main"} onClick={() => setLabelTab("main")}>
           {kind === "dualAxis" ? "柱形文本" : horizontal ? "条形文本" : lines ? "折线文本" : "柱形文本"}</button>
@@ -254,14 +297,14 @@ export default function ChartProperties({ node, patchChart }: {
       {toggle("显示图形文本", "showLabels", labelsByDefault)}
       {flag("showLabels", labelsByDefault) && <>
         {number("文字大小", "labelSize", 12, 6, 48)}
-        {regularCartesian && <Field label="文字颜色模式"><Select size="small" aria-label="文字颜色模式" disabled={locked}
-          value={String(chart.labelColorMode ?? "normal")} optionList={[{ value: "normal", label: "默认" },
+        {regularCartesian && <Field label="文字颜色模式"><SelectField label="文字颜色模式" disabled={locked}
+          value={String(chart.labelColorMode ?? "normal")} options={[{ value: "normal", label: "默认" },
             { value: "follow", label: "跟随图形" }]} onChange={value => set("labelColorMode", value)}/></Field>}
         <ColorField label="文字颜色" value={String(chart.labelColor ?? "#cde3f7")} disabled={locked} onChange={value => set("labelColor", value)}/>
         {!nameLabels && <>{number("小数位数", "decimals", 0, 0, 6)}
           {toggle("小数补零", "labelPadZeros")}
-          {(regularCartesian || ["pie", "pieBasic", "pieRose"].includes(kind)) && <Field label="文本显示格式"><Select size="small" aria-label="文本显示格式"
-            disabled={locked} value={String(chart.labelFormat ?? "value")} optionList={[{ value: "value", label: "数值" },
+          {(regularCartesian || ["pie", "pieBasic", "pieRose"].includes(kind)) && <Field label="文本显示格式"><SelectField label="文本显示格式"
+            disabled={locked} value={String(chart.labelFormat ?? "value")} options={[{ value: "value", label: "数值" },
               { value: "percent", label: "百分比" }]} onChange={value => set("labelFormat", value)}/></Field>}
           <Field label="单位"><BufferedInput label="图形文本单位" value={String(chart.unit ?? "")} disabled={locked} onChange={value => set("unit", value)}/></Field>
           {regularCartesian && !!chart.unit && <>{number("单位字体大小", "labelUnitSize", num("labelSize", 12), 6, 48)}
@@ -272,8 +315,8 @@ export default function ChartProperties({ node, patchChart }: {
           {number("文字水平偏移", "labelOffsetX", 0, -500, 500)}
           {number("文字垂直偏移", "labelOffsetY", 0, -500, 500)}
           {lines && toggle("跟随数据颜色", "labelFollowDataColor", false)}
-          {bars && <><Field label="文本位置"><Select size="small" aria-label="文本位置" disabled={locked}
-            value={String(chart.labelPosition ?? "outside")} optionList={[{ value: "inside", label: "内部" },
+          {bars && <><Field label="文本位置"><SelectField label="文本位置" disabled={locked}
+            value={String(chart.labelPosition ?? "outside")} options={[{ value: "inside", label: "内部" },
               { value: "outside", label: "外部" }, { value: "top-align", label: "顶部" }]}
             onChange={value => set("labelPosition", value)}/></Field>
             {number("文本与图形的间距", "labelSpacing", horizontal ? 4 : 3, -200, 200)}
@@ -287,21 +330,21 @@ export default function ChartProperties({ node, patchChart }: {
       {lineTabAvailable && activeLabelTab === "line" && <div role="tabpanel">
         {toggle("显示折线文本", "showLineLabels", flag("showLabels", labelsByDefault))}
         {lineFlag("showLineLabels", flag("showLabels", labelsByDefault)) && <>
-          <Field label="折线文本显示格式"><Select size="small" aria-label="折线文本显示格式" disabled={locked}
-            value={String(chart.lineLabelFormat ?? chart.labelFormat ?? "value")} optionList={[
+          <Field label="折线文本显示格式"><SelectField label="折线文本显示格式" disabled={locked}
+            value={String(chart.lineLabelFormat ?? chart.labelFormat ?? "value")} options={[
               { value: "value", label: "数值" }, { value: "percent", label: "百分比" },
             ]} onChange={value => set("lineLabelFormat", value)}/></Field>
           {number("折线文本小数位数", "lineLabelDecimals", num("decimals", 0), 0, 6)}
           {toggle("折线文本小数补零", "lineLabelPadZeros", flag("labelPadZeros"))}
-          <Field label="折线文本位置"><Select size="small" aria-label="折线文本位置" disabled={locked}
-            value={String(chart.lineLabelPosition ?? "above")} optionList={[
+          <Field label="折线文本位置"><SelectField label="折线文本位置" disabled={locked}
+            value={String(chart.lineLabelPosition ?? "above")} options={[
               { value: "above", label: "折线上方" }, { value: "top", label: "置顶" },
             ]} onChange={value => set("lineLabelPosition", value)}/></Field>
           {number("折线文本大小", "lineLabelSize", num("labelSize", 12), 6, 48)}
           <ColorField label="折线文本颜色" value={String(chart.lineLabelColor ?? chart.labelColor ?? "#cde3f7")}
             disabled={locked} onChange={value => set("lineLabelColor", value)}/>
-          <Field label="折线文字颜色模式"><Select size="small" aria-label="折线文字颜色模式" disabled={locked}
-            value={String(chart.lineLabelColorMode ?? chart.labelColorMode ?? "normal")} optionList={[
+          <Field label="折线文字颜色模式"><SelectField label="折线文字颜色模式" disabled={locked}
+            value={String(chart.lineLabelColorMode ?? chart.labelColorMode ?? "normal")} options={[
               { value: "normal", label: "默认" }, { value: "follow", label: "跟随图形" },
             ]} onChange={value => set("lineLabelColorMode", value)}/></Field>
           {toggle("折线文字跟随数据颜色", "lineLabelFollowDataColor", flag("labelFollowDataColor", false))}
@@ -311,7 +354,7 @@ export default function ChartProperties({ node, patchChart }: {
           <Field label="折线文本单位"><BufferedInput label="折线文本单位" disabled={locked}
             value={String(chart.lineLabelUnit ?? chart.unit ?? "")} onChange={value => set("lineLabelUnit", value)}/></Field>
           {!!(chart.lineLabelUnit ?? chart.unit) && <>
-            {number("折线单位字体大小", "lineLabelUnitSize", num("labelUnitSize", num("lineLabelSize", num("labelSize", 12))), 6, 48)}
+            {number("折线单位字体大小", "lineLabelUnitSize", num("lineLabelUnitSize", num("lineLabelSize", num("labelSize", 12))), 6, 48)}
             <ColorField label="折线单位文字颜色"
               value={String(chart.lineLabelUnitColor ?? chart.labelUnitColor ?? chart.lineLabelColor ?? chart.labelColor ?? "#cde3f7")}
               disabled={locked} onChange={value => set("lineLabelUnitColor", value)}/>
@@ -321,9 +364,9 @@ export default function ChartProperties({ node, patchChart }: {
       {rankingChart && activeLabelTab === "ranking" && <div role="tabpanel">
         {toggle("排名文本", "showRanking", false)}
         {flag("showRanking", false) && <>
-          <Field label="排名字体"><Select size="small" aria-label="排名字体" disabled={locked}
+          <Field label="排名字体"><SelectField label="排名字体" disabled={locked}
             value={String(chart.rankingFontFamily ?? "sans-serif")}
-            optionList={[{ value: "sans-serif", label: "sans-serif" }, ...widgetFontFamilies]}
+            options={[{ value: "sans-serif", label: "sans-serif" }, ...widgetFontFamilies]}
             onChange={value => set("rankingFontFamily", value)}/></Field>
           {number("排名字体大小", "rankingFontSize", 12, 6, 96)}
           {alphaColor("排名字体颜色", "rankingColor", "#ffffff")}
@@ -333,39 +376,39 @@ export default function ChartProperties({ node, patchChart }: {
           {toggle("排名文字删除线", "rankingStrike", false)}
           {number("距图形距离", "rankingDistance", 0, -500, 500)}
           <Field label="文本模板"><BufferedInput label="排名文本模板" value={String(chart.rankingTemplate ?? "NO.{}")} disabled={locked} onChange={value => set("rankingTemplate", value)}/></Field>
-          <Field label="显示文本"><Select size="small" aria-label="排名显示文本" disabled={locked}
-            value={String(chart.rankingDisplay ?? "all")} optionList={[
+          <Field label="显示文本"><SelectField label="排名显示文本" disabled={locked}
+            value={String(chart.rankingDisplay ?? "all")} options={[
               { value: "all", label: "全部" }, { value: "max", label: "最大值" }, { value: "min", label: "最小值" },
               { value: "max-and-min", label: "最大值和最小值" }, { value: "custom", label: "自定义" },
             ]} onChange={value => set("rankingDisplay", value)}/></Field>
           {chart.rankingDisplay === "custom" && number("显示数量", "rankingCount", 3, 0, 30)}
-          <Field label="文字背景"><Select size="small" aria-label="排名文字背景" disabled={locked}
-            value={String(chart.rankingBackground ?? "shape")} optionList={[
+          <Field label="文字背景"><SelectField label="排名文字背景" disabled={locked}
+            value={String(chart.rankingBackground ?? "shape")} options={[
               { value: "shape", label: "图案" }, { value: "image", label: "图片" },
             ]} onChange={value => set("rankingBackground", value)}/></Field>
           {chart.rankingBackground === "image" ? imageField("文字背景图片", "rankingBackgroundImage", rankImageRef)
-            : <Field label="背景图案类型"><Select size="small" aria-label="排名背景图案类型" disabled={locked}
-            value={String(chart.rankingBackgroundShape ?? "rect")} optionList={[
+            : <Field label="背景图案类型"><SelectField label="排名背景图案类型" disabled={locked}
+            value={String(chart.rankingBackgroundShape ?? "rect")} options={[
               { value: "rect", label: "矩形" }, { value: "down-arrow-rect", label: "带箭头矩形" },
             ]} onChange={value => set("rankingBackgroundShape", value)}/></Field>}
           {alphaColor("文字背景颜色", "rankingBackgroundColor", "#ffffff00")}
           {number("文字背景宽度", "rankingBackgroundWidth", 50, 0, 1000)}
           {number("文字背景高度", "rankingBackgroundHeight", 30, 0, 1000)}
-          <Field label="文本格式"><Select size="small" aria-label="排名文本格式" disabled={locked}
-            value={String(chart.rankingFormat ?? "text-template")} optionList={[
+          <Field label="文本格式"><SelectField label="排名文本格式" disabled={locked}
+            value={String(chart.rankingFormat ?? "text-template")} options={[
               { value: "text-template", label: "文本模板" }, { value: "value-template", label: "数值文本模板" },
             ]} onChange={value => set("rankingFormat", value)}/></Field>
           {kind === "bar" && number("文本偏移", "rankingOffset", 0, -500, 500)}
         </>}
       </div>}
-    </section></Collapse.Panel>}
-    <Collapse.Panel header="图形形状" itemKey="shape"><section className="property-section">
+    </section></Panel>}
+    <Panel header="图形形状" itemKey="shape"><section className="property-section">
       {bars && <>{number("柱形宽度 (0 为自适应)", "barWidth", 0, 0, 200)}
         {kind !== "barGradient" && chart.gradient !== true && !["bubbleBars", "boxplot", "bullet", "pictorial"].includes(String(chart.variant))
           && number("图形圆角半径", "barRadius", 1, 0, 30)}</>}
       {lines && <>{regularCartesian && kind !== "dualAxis" && chart.variant !== "rangeArea" && <>
-        <Field label="显示样式"><Select size="small" aria-label="折线显示样式" disabled={locked}
-          value={String(chart.categoryVisibilityMode ?? "all")} optionList={[
+        <Field label="显示样式"><SelectField label="折线显示样式" disabled={locked}
+          value={String(chart.categoryVisibilityMode ?? "all")} options={[
             { value: "all", label: "显示全部" }, { value: "custom", label: "自定义" },
           ]} onChange={value => set("categoryVisibilityMode", value)}/></Field>
         {chart.categoryVisibilityMode === "custom" && number("图形数量", "visibleCategoryCount", 10, 0, 30)}
@@ -377,19 +420,19 @@ export default function ChartProperties({ node, patchChart }: {
         {regularCartesian && kind !== "dualAxis" && toggle("两侧留白", "boundaryGap")}
         {regularCartesian && kind !== "dualAxis" && chart.variant !== "rangeArea" && <>
           {toggle("去除零值", "zeroRemoval", false)}
-          {flag("zeroRemoval", false) && <Field label="去除零值模式"><Select size="small" aria-label="去除零值模式"
-            disabled={locked} value={String(chart.zeroRemovalMode ?? "skip")} optionList={[
+          {flag("zeroRemoval", false) && <Field label="去除零值模式"><SelectField label="去除零值模式"
+            disabled={locked} value={String(chart.zeroRemovalMode ?? "skip")} options={[
               { value: "skip", label: "跳过" }, { value: "segment", label: "分段" },
             ]} onChange={value => set("zeroRemovalMode", value)}/></Field>}
         </>}
-        {chart.variant !== "pathAnimation" && <Field label="折线形状"><Select size="small" aria-label="折线形状" disabled={locked} value={String(chart.lineStyle ?? "solid")}
-          optionList={[{ value: "solid", label: "折线" }, { value: "dashed", label: "虚线" }]}
+        {chart.variant !== "pathAnimation" && <Field label="折线形状"><SelectField label="折线形状" disabled={locked} value={String(chart.lineStyle ?? "solid")}
+          options={[{ value: "solid", label: "折线" }, { value: "dashed", label: "虚线" }]}
           onChange={value => set("lineStyle", value)}/></Field>}
         {toggle("平滑曲线", "smooth", kind === "lineSmooth")}
         {toggle("显示数据点", "showPoints")}
         {flag("showPoints") && <>{number("数据点半径", "pointRadius", 3, 0, 50)}
-          {chart.variant !== "pathAnimation" && <Field label="点形状"><Select size="small" aria-label="点形状" disabled={locked}
-            value={String(chart.pointShape ?? "circle")} optionList={pointShapeOptions}
+          {chart.variant !== "pathAnimation" && <Field label="点形状"><SelectField label="点形状" disabled={locked}
+            value={String(chart.pointShape ?? "circle")} options={pointShapeOptions}
             onChange={value => set("pointShape", value)}/></Field>}
           {chart.pointShape === "image" && imageField("数据点图片", "pointImage", pointImageRef)}
           {regularCartesian && <>{alphaColor("数据点阴影颜色", "pointShadowColor", "#00000000")}
@@ -404,26 +447,26 @@ export default function ChartProperties({ node, patchChart }: {
               <NumberField label={label} value={Number(value(key, fallback))} min={min} max={max} disabled={locked}
                 onChange={next => setSeries(index, key, next)}/>;
             return <details className="chart-reference-line" key={index} open={index === 0}><summary>{`系列 ${index + 1}`}</summary>
-              <Field label="折线形状"><Select size="small" aria-label={`系列 ${index + 1} 折线形状`} disabled={locked}
-                value={String(value("lineStyle", "solid"))} optionList={[{ value: "solid", label: "折线" }, { value: "dashed", label: "虚线" }]}
+              <Field label="折线形状"><SelectField label={`系列 ${index + 1} 折线形状`} disabled={locked}
+                value={String(value("lineStyle", "solid"))} options={[{ value: "solid", label: "折线" }, { value: "dashed", label: "虚线" }]}
                 onChange={next => setSeries(index, "lineStyle", next)}/></Field>
-              <Field label="平滑线"><Switch size="small" aria-label={`系列 ${index + 1} 平滑线`} disabled={locked}
-                checked={!!value("smooth", kind === "lineSmooth")} onChange={next => setSeries(index, "smooth", next)}/></Field>
+              <Field label="平滑线"><Switch size="sm" aria-label={`系列 ${index + 1} 平滑线`} disabled={locked}
+                checked={!!value("smooth", kind === "lineSmooth")} onCheckedChange={next => setSeries(index, "smooth", next)}/></Field>
               {numeric("折线粗细", "lineWidth", 2.5, 0, 20)}
               {seriesAlphaColor("折线阴影颜色", index, "lineShadowColor")}
               {numeric("折线阴影模糊程度", "lineShadowBlur", 0, 0, 100)}
               {offsetField("折线阴影偏移", value("lineShadowOffset", [0, 0]), next => setSeries(index, "lineShadowOffset", next))}
-              <Field label="显示数据点"><Switch size="small" aria-label={`系列 ${index + 1} 显示数据点`} disabled={locked}
-                checked={!!value("showPoints", true)} onChange={next => setSeries(index, "showPoints", next)}/></Field>
+              <Field label="显示数据点"><Switch size="sm" aria-label={`系列 ${index + 1} 显示数据点`} disabled={locked}
+                checked={!!value("showPoints", true)} onCheckedChange={next => setSeries(index, "showPoints", next)}/></Field>
               {!!value("showPoints", true) && <>
-                <Field label="点形状"><Select size="small" aria-label={`系列 ${index + 1} 点形状`} disabled={locked}
-                  value={String(value("pointShape", "circle"))} optionList={pointShapeOptions}
+                <Field label="点形状"><SelectField label={`系列 ${index + 1} 点形状`} disabled={locked}
+                  value={String(value("pointShape", "circle"))} options={pointShapeOptions}
                   onChange={next => setSeries(index, "pointShape", next)}/></Field>
                 {numeric("数据点半径", "pointRadius", 3, 0, 50)}
                 {value("pointShape", "circle") === "image" && <>
                   <Field label="数据点图片"><BufferedInput label={`系列 ${index + 1} 数据点图片地址`}
                     value={String(value("pointImage", ""))} disabled={locked} onChange={next => setSeries(index, "pointImage", next)}/></Field>
-                  <Button size="small" disabled={locked} onClick={() => seriesImageRefs.current[index]?.click()}>选择本地图片</Button>
+                  <Button size="sm" disabled={locked} onClick={() => seriesImageRefs.current[index]?.click()}>选择本地图片</Button>
                   <input hidden type="file" accept="image/png,image/jpeg,image/webp,image/gif" aria-label={`选择系列 ${index + 1} 数据点图片`}
                     ref={element => { seriesImageRefs.current[index] = element; }} onChange={event => {
                       const file = event.target.files?.[0]; event.target.value = ""; if (!file) return;
@@ -444,11 +487,11 @@ export default function ChartProperties({ node, patchChart }: {
               <NumberField label={label} value={typeof flow[key] === "number" ? flow[key] as number : fallback}
                 min={min} max={max} step={step} disabled={locked} onChange={next => setFlow(index, key, next)}/>;
             return <details className="chart-reference-line" key={`flow-${index}`} open={index === 0}><summary>{`系列 ${index + 1} 流光`}</summary>
-              <Field label="流光"><Switch size="small" aria-label={`系列 ${index + 1} 流光`} disabled={locked}
-                checked={flow.enabled === true} onChange={next => setFlow(index, "enabled", next)}/></Field>
+              <Field label="流光"><Switch size="sm" aria-label={`系列 ${index + 1} 流光`} disabled={locked}
+                checked={flow.enabled === true} onCheckedChange={next => setFlow(index, "enabled", next)}/></Field>
               {flow.enabled === true && <>
-                <Field label="流光点形状"><Select size="small" aria-label={`系列 ${index + 1} 流光点形状`} disabled={locked}
-                  value={String(flow.shape ?? "circle")} optionList={pointShapeOptions.filter(option =>
+                <Field label="流光点形状"><SelectField label={`系列 ${index + 1} 流光点形状`} disabled={locked}
+                  value={String(flow.shape ?? "circle")} options={pointShapeOptions.filter(option =>
                     ["circle", "circleEmpty", "squareEmpty", "roundSquare", "triangle", "diamond"].includes(option.value))}
                   onChange={next => setFlow(index, "shape", next)}/></Field>
                 {flowColor(index)}
@@ -490,10 +533,10 @@ export default function ChartProperties({ node, patchChart }: {
       {kind === "waterball" && number("边框宽度", "waterBorder", 2, 0, 20)}
       {!bars && !lines && !pie2d && !gauge && !radar && !heat && !sankey && !["scatter", "bubble", "funnel", "waterball"].includes(kind)
         && <p className="properties-note">此图形使用固定几何形状，可调整颜色和图例。</p>}
-    </section></Collapse.Panel>
-    {regularCartesian && <Collapse.Panel header="辅助线" itemKey="reference"><section className="property-section">
+    </section></Panel>
+    {regularCartesian && <Panel header="辅助线" itemKey="reference"><section className="property-section">
       {referenceLines.map((line, index) => <div className="chart-reference-line" key={index}>
-        <Field label={`辅助线 ${index + 1}`}><Button size="small" disabled={locked}
+        <Field label={`辅助线 ${index + 1}`}><Button size="sm" disabled={locked}
           onClick={() => set("referenceLines", referenceLines.filter((_, i) => i !== index))}>删除</Button></Field>
         <Field label="名称"><BufferedInput label={`辅助线${index + 1}名称`} value={String(line.name ?? "")}
           disabled={locked} onChange={value => updateReference(index, { name: value })}/></Field>
@@ -503,8 +546,8 @@ export default function ChartProperties({ node, patchChart }: {
           onChange={value => updateReference(index, { color: value })}/>
         <NumberField label="线条宽度" value={typeof line.width === "number" ? line.width : 1}
           min={1} max={10} disabled={locked} onChange={value => updateReference(index, { width: value })}/>
-        <Field label="线条类型"><Select size="small" aria-label={`辅助线${index + 1}线条类型`} disabled={locked}
-          value={String(line.style ?? "solid")} optionList={[{ value: "solid", label: "实线" }, { value: "dashed", label: "虚线" }]}
+        <Field label="线条类型"><SelectField label={`辅助线${index + 1}线条类型`} disabled={locked}
+          value={String(line.style ?? "solid")} options={[{ value: "solid", label: "实线" }, { value: "dashed", label: "虚线" }]}
           onChange={value => updateReference(index, { style: value })}/></Field>
         {line.style === "dashed" && <NumberField label="虚线宽度" value={typeof line.dash === "number" ? line.dash : 6}
           min={1} max={100} disabled={locked} onChange={value => updateReference(index, { dash: value })}/>}
@@ -517,10 +560,10 @@ export default function ChartProperties({ node, patchChart }: {
             offset[axis] = value; updateReference(index, { textOffset: offset });
           }}/>) }
       </div>)}
-      <Button size="small" disabled={locked || referenceLines.length >= 32} onClick={() => set("referenceLines", [...referenceLines,
+      <Button size="sm" disabled={locked || referenceLines.length >= 32} onClick={() => set("referenceLines", [...referenceLines,
         { name: "", value: 0, color: "#ffb84d", width: 1, style: "solid" }])}>添加辅助线</Button>
-    </section></Collapse.Panel>}
-    {regularCartesian && <Collapse.Panel header="缩略轴" itemKey="dataZoom"><section className="property-section">
+    </section></Panel>}
+    {regularCartesian && <Panel header="缩略轴" itemKey="dataZoom"><section className="property-section">
       {toggle("启用缩略轴", "showDataZoom", false)}
       {flag("showDataZoom", false) && <>
         {number("缩略轴高度", "zoomHeight", 16, 4, 60)}
@@ -551,8 +594,8 @@ export default function ChartProperties({ node, patchChart }: {
         <ColorField label="选中面积颜色" value={String(chart.zoomSelectedAreaColor ?? "#1c6cb855")} disabled={locked}
           onChange={value => set("zoomSelectedAreaColor", value)}/>
       </>}
-    </section></Collapse.Panel>}
-    {cartesian && <Collapse.Panel header="轴" itemKey="axes"><section className="property-section">
+    </section></Panel>}
+    {cartesian && <Panel header="轴" itemKey="axes"><section className="property-section">
       {regularCartesian ? <>
         <div className="chart-label-tabs" role="tablist" aria-label="坐标轴类型">
           {(["X", "Y"] as const).map(axis => <button type="button" role="tab" key={axis}
@@ -563,12 +606,12 @@ export default function ChartProperties({ node, patchChart }: {
         {axisTab !== "right" && <div role="tabpanel">
         {axisTab === "X" ? toggle("启用 X 轴", "showXAxis") : toggle("启用 Y 轴", "showYAxis")}
         {(["X", "Y"] as const).filter(axis => axisTab === axis).map(axis => flag(`show${axis}Axis`) &&
-        <Collapse key={axis} className="chart-axis-subsections" expandIconPosition="left">
-          <Collapse.Panel header="轴线" itemKey="line"><section className="property-section">
+        <Panels key={axis} className="chart-axis-subsections">
+          <Panel header="轴线" itemKey={`${axis}-line`}><section className="property-section">
           {toggle(`${axis} 轴线`, `showAxisLine${axis}`, false)}
           {flag(`showAxisLine${axis}`, false) && <>
-            <Field label={`${axis} 轴线类型`}><Select size="small" aria-label={`${axis} 轴线类型`} disabled={locked}
-              value={String(chart[`axisLineStyle${axis}`] ?? "solid")} optionList={[{ value: "solid", label: "实线" },
+            <Field label={`${axis} 轴线类型`}><SelectField label={`${axis} 轴线类型`} disabled={locked}
+              value={String(chart[`axisLineStyle${axis}`] ?? "solid")} options={[{ value: "solid", label: "实线" },
                 { value: "dashed", label: "虚线" }, { value: "dottedLine", label: "点线" }]}
               onChange={value => set(`axisLineStyle${axis}`, value)}/></Field>
             {chart[`axisLineStyle${axis}`] === "dottedLine" && ["线段长度", "线段间隔"].map((label, index) => {
@@ -582,8 +625,8 @@ export default function ChartProperties({ node, patchChart }: {
               disabled={locked} onChange={value => set(`axisLineColor${axis}`, value)}/>
             {number(`${axis} 轴线宽度`, `axisLineWidth${axis}`, 1, 0, 20)}
           </>}
-          </section></Collapse.Panel>
-          <Collapse.Panel header="刻度线" itemKey="ticks"><section className="property-section">
+          </section></Panel>
+          <Panel header="刻度线" itemKey={`${axis}-ticks`}><section className="property-section">
           {toggle(`${axis} 轴刻度线`, `showAxisTicks${axis}`, false)}
           {flag(`showAxisTicks${axis}`, false) && <>
             <ColorField label={`${axis} 轴刻度线颜色`} value={String(chart[`axisTickColor${axis}`] ?? "#cccccc")}
@@ -591,17 +634,17 @@ export default function ChartProperties({ node, patchChart }: {
             {number(`${axis} 轴刻度线宽度`, `axisTickWidth${axis}`, 2, 0, 20)}
             {number(`${axis} 轴刻度线长度`, `axisTickLength${axis}`, 5, 0, 50)}
           </>}
-          </section></Collapse.Panel>
-          <Collapse.Panel header="刻度值" itemKey="labels"><section className="property-section">
+          </section></Panel>
+          <Panel header="刻度值" itemKey={`${axis}-labels`}><section className="property-section">
           {toggle(`${axis} 轴刻度值`, `showAxisLabel${axis}`)}
           {flag(`showAxisLabel${axis}`) && <>
           {(axis === "X") === horizontal && flag(`showAxisLabel${axis}`) && <>
-            <Field label={`${axis} 轴显示格式`}><Select size="small" aria-label={`${axis} 轴显示格式`} disabled={locked}
-              value={String(chart[`axisValueFormat${axis}`] ?? "normal")} optionList={[
+            <Field label={`${axis} 轴显示格式`}><SelectField label={`${axis} 轴显示格式`} disabled={locked}
+              value={String(chart[`axisValueFormat${axis}`] ?? "normal")} options={[
                 { value: "normal", label: "数值" }, { value: "percent", label: "百分比" },
               ]} onChange={value => set(`axisValueFormat${axis}`, value)}/></Field>
-            <Field label={`${axis} 轴计数单位`}><Select size="small" aria-label={`${axis} 轴计数单位`} disabled={locked}
-              value={String(chart[`axisValueScale${axis}`] ?? "0")} optionList={[
+            <Field label={`${axis} 轴计数单位`}><SelectField label={`${axis} 轴计数单位`} disabled={locked}
+              value={String(chart[`axisValueScale${axis}`] ?? "0")} options={[
                 { value: "0", label: "不设置" }, { value: "3", label: "K" }, { value: "4", label: "万" },
                 { value: "5", label: "十万" }, { value: "6", label: "百万" }, { value: "7", label: "千万" },
                 { value: "8", label: "亿" },
@@ -619,8 +662,8 @@ export default function ChartProperties({ node, patchChart }: {
             axis === "X" ? (horizontal ? 5 : 13) : (horizontal ? 5 : 7), 0, 100)}
           {rotation(`${axis} 轴刻度值旋转`, `axisLabelRotate${axis}`)}
           </>}
-          </section></Collapse.Panel>
-          <Collapse.Panel header="轴名称" itemKey="name"><section className="property-section">
+          </section></Panel>
+          <Panel header="轴名称" itemKey={`${axis}-name`}><section className="property-section">
           {toggle(`显示 ${axis} 轴名称`, `showAxisName${axis}`, false)}
           {flag(`showAxisName${axis}`, false) && <>
             <Field label={`${axis} 轴名称`}><BufferedInput label={`${axis} 轴名称`} disabled={locked}
@@ -630,52 +673,52 @@ export default function ChartProperties({ node, patchChart }: {
               disabled={locked} onChange={value => set(`axisNameColor${axis}`, value)}/>
             {number(`${axis} 轴名称偏移`, `axisNameGap${axis}`, axis === "X" ? 0 : 15, -100, 200)}
           </>}
-          </section></Collapse.Panel>
-          <Collapse.Panel header="网格线" itemKey="grid"><section className="property-section">
+          </section></Panel>
+          <Panel header="网格线" itemKey={`${axis}-grid`}><section className="property-section">
           {toggle(`${axis} 轴网格线`, `showGrid${axis}`, axis === "X" ? gridXDefault : gridYDefault)}
           {flag(`showGrid${axis}`, axis === "X" ? gridXDefault : gridYDefault) && <>
-            <Field label={`${axis} 轴网格线类型`}><Select size="small" aria-label={`${axis} 轴网格线类型`} disabled={locked}
-              value={String(chart[`gridStyle${axis}`] ?? "solid")} optionList={[{ value: "solid", label: "实线" },
+            <Field label={`${axis} 轴网格线类型`}><SelectField label={`${axis} 轴网格线类型`} disabled={locked}
+              value={String(chart[`gridStyle${axis}`] ?? "solid")} options={[{ value: "solid", label: "实线" },
                 { value: "dotted", label: "虚线" }]} onChange={value => set(`gridStyle${axis}`, value)}/></Field>
             {chart[`gridStyle${axis}`] === "dotted" && number(`${axis} 轴网格虚线长度`, `gridDash${axis}`, 4, 0.5, 100, 0.5)}
             <ColorField label={`${axis} 轴网格线颜色`} value={String(chart[`gridColor${axis}`] ?? "#a4c4e31e")}
               disabled={locked} onChange={value => set(`gridColor${axis}`, value)}/>
             {number(`${axis} 轴网格线宽度`, `gridWidth${axis}`, 1, 0, 20)}
           </>}
-          </section></Collapse.Panel>
-        </Collapse>)}
+          </section></Panel>
+        </Panels>)}
         </div>}
         {hasRightAxis && axisTab === "right" && <div role="tabpanel">
           {rightAxisChart && number("右轴首个系列 (0 为关闭)", "rightAxisStart", 0, 0, Math.max(1, colorCount))}
           {(kind === "dualAxis" || num("rightAxisStart", 0) > 0) && <>
             {toggle("显示右侧 Y 轴", "showRightAxis", kind !== "dualAxis")}
-            {flag("showRightAxis", kind !== "dualAxis") && <Collapse className="chart-axis-subsections" expandIconPosition="left">
-              <Collapse.Panel header="轴线" itemKey="line"><section className="property-section">
+            {flag("showRightAxis", kind !== "dualAxis") && <Panels className="chart-axis-subsections">
+              <Panel header="轴线" itemKey="right-line"><section className="property-section">
               {toggle("右轴轴线", "showRightAxisLine")}
-              {flag("showRightAxisLine") && <><Field label="右轴轴线类型"><Select size="small" aria-label="右轴轴线类型"
-                disabled={locked} value={String(chart.rightAxisLineStyle ?? "solid")} optionList={[
+              {flag("showRightAxisLine") && <><Field label="右轴轴线类型"><SelectField label="右轴轴线类型"
+                disabled={locked} value={String(chart.rightAxisLineStyle ?? "solid")} options={[
                   { value: "solid", label: "实线" }, { value: "dashed", label: "虚线" },
                 ]} onChange={value => set("rightAxisLineStyle", value)}/></Field>
                 {number("右轴轴线宽度", "rightAxisLineWidth", 1, 0, 20)}
                 <ColorField label="右轴轴线颜色" value={String(chart.rightAxisLineColor ?? "#cccccc")}
                   disabled={locked} onChange={value => set("rightAxisLineColor", value)}/></>}
-              </section></Collapse.Panel>
-              <Collapse.Panel header="刻度线" itemKey="ticks"><section className="property-section">
+              </section></Panel>
+              <Panel header="刻度线" itemKey="right-ticks"><section className="property-section">
               {toggle("右轴刻度线", "showRightAxisTicks")}
               {flag("showRightAxisTicks") && <>{number("右轴刻度线长度", "rightAxisTickLength", 5, 0, 50)}
                 {number("右轴刻度线宽度", "rightAxisTickWidth", 2, 0, 20)}
                 <ColorField label="右轴刻度线颜色" value={String(chart.rightAxisTickColor ?? "#cccccc")}
                   disabled={locked} onChange={value => set("rightAxisTickColor", value)}/></>}
-              </section></Collapse.Panel>
-              <Collapse.Panel header="刻度值" itemKey="labels"><section className="property-section">
+              </section></Panel>
+              <Panel header="刻度值" itemKey="right-labels"><section className="property-section">
               {toggle("右轴刻度值", "showRightAxisLabel")}
               {flag("showRightAxisLabel") && <>
-                <Field label="右轴显示格式"><Select size="small" aria-label="右轴显示格式" disabled={locked}
-                  value={String(chart.rightAxisValueFormat ?? "normal")} optionList={[
+                <Field label="右轴显示格式"><SelectField label="右轴显示格式" disabled={locked}
+                  value={String(chart.rightAxisValueFormat ?? "normal")} options={[
                     { value: "normal", label: "数值" }, { value: "percent", label: "百分比" },
                   ]} onChange={value => set("rightAxisValueFormat", value)}/></Field>
-                <Field label="右轴计数单位"><Select size="small" aria-label="右轴计数单位" disabled={locked}
-                  value={String(chart.rightAxisValueScale ?? "0")} optionList={[
+                <Field label="右轴计数单位"><SelectField label="右轴计数单位" disabled={locked}
+                  value={String(chart.rightAxisValueScale ?? "0")} options={[
                     { value: "0", label: "不设置" }, { value: "3", label: "K" }, { value: "4", label: "万" },
                     { value: "5", label: "十万" }, { value: "6", label: "百万" }, { value: "7", label: "千万" },
                     { value: "8", label: "亿" },
@@ -690,8 +733,8 @@ export default function ChartProperties({ node, patchChart }: {
                 {number("右轴刻度距轴线", "rightLabelOffset", 10, 0, 100)}
                 {rotation("右轴刻度值旋转", "rightAxisRotate", true)}
               </>}
-              </section></Collapse.Panel>
-              <Collapse.Panel header="轴名称" itemKey="name"><section className="property-section">
+              </section></Panel>
+              <Panel header="轴名称" itemKey="right-name"><section className="property-section">
               {toggle("显示右轴名称", "showRightAxisName", false)}
               {flag("showRightAxisName", false) && <>
                 <Field label="右轴名称"><BufferedInput label="右轴名称" disabled={locked}
@@ -702,12 +745,12 @@ export default function ChartProperties({ node, patchChart }: {
                 {number("右轴名称距轴线", "rightAxisNameGap", 15, -100, 200)}
                 {number("右轴名称文本偏移", "rightAxisNameOffset", 0, -100, 200)}
               </>}
-              </section></Collapse.Panel>
-              <Collapse.Panel header="网格线" itemKey="grid"><section className="property-section">
+              </section></Panel>
+              <Panel header="网格线" itemKey="right-grid"><section className="property-section">
               {toggle("右轴网格线", "showRightGrid", false)}
               {flag("showRightGrid", false) && <>
-                <Field label="右轴网格线类型"><Select size="small" aria-label="右轴网格线类型" disabled={locked}
-                  value={String(chart.rightGridStyle ?? "solid")} optionList={[
+                <Field label="右轴网格线类型"><SelectField label="右轴网格线类型" disabled={locked}
+                  value={String(chart.rightGridStyle ?? "solid")} options={[
                     { value: "solid", label: "直线" }, { value: "dotted", label: "虚线" },
                   ]} onChange={value => set("rightGridStyle", value)}/></Field>
                 {chart.rightGridStyle === "dotted" && number("右轴网格虚线宽度", "rightGridDash", 4, 0.5, 100, 0.5)}
@@ -715,15 +758,15 @@ export default function ChartProperties({ node, patchChart }: {
                   disabled={locked} onChange={value => set("rightGridColor", value)}/>
                 {number("右轴网格线宽度", "rightGridWidth", 1, 0, 20)}
               </>}
-              </section></Collapse.Panel>
-            </Collapse>}
+              </section></Panel>
+            </Panels>}
           </>}
         </div>}
       </> : <>{toggle("显示 X 轴", "showXAxis")}{toggle("显示 Y 轴", "showYAxis")}
         {toggle("显示网格线", "showGrid")}{number("坐标轴文字大小", "axisFontSize", 10, 6, 36)}
         <ColorField label="坐标轴文字颜色" value={String(chart.axisColor ?? "#90acc1")} disabled={locked} onChange={value => set("axisColor", value)}/></>}
-    </section></Collapse.Panel>}
-    {regularCartesian && <Collapse.Panel header="内边距" itemKey="padding"><section className="property-section">
+    </section></Panel>}
+    {regularCartesian && <Panel header="内边距" itemKey="padding"><section className="property-section">
       {(["左", "上", "右", "下"] as const).map((side, index) => {
         const reserveRight = hasRightAxis && (kind === "dualAxis" || num("rightAxisStart", 0) > 0)
           && flag("showRightAxis", kind !== "dualAxis");
@@ -734,14 +777,14 @@ export default function ChartProperties({ node, patchChart }: {
           onChange={value => set("kitPadding", defaults.map((fallback, i) => i === index ? value
             : typeof padding[i] === "number" ? padding[i] : fallback))}/>;
       })}
-    </section></Collapse.Panel>}
-    {hasLegend && <Collapse.Panel header="图例" itemKey="legend"><section className="property-section">
+    </section></Panel>}
+    {hasLegend && <Panel header="图例" itemKey="legend"><section className="property-section">
       {toggle("显示图例", "showLegend")}
-      {flag("showLegend") && <><Field label="图例类型"><Select size="small" aria-label="图例类型" disabled={locked}
-        value={String(chart.legendType ?? "plain")} optionList={[{ value: "plain", label: "普通" }, { value: "scroll", label: "翻页" }]}
+      {flag("showLegend") && <><Field label="图例类型"><SelectField label="图例类型" disabled={locked}
+        value={String(chart.legendType ?? "plain")} options={[{ value: "plain", label: "普通" }, { value: "scroll", label: "翻页" }]}
         onChange={value => set("legendType", value)}/></Field>
-      <Field label="图例位置"><Select size="small" aria-label="图例位置" disabled={locked}
-        value={String(chart.legendPosition ?? "auto")} optionList={[
+      <Field label="图例位置"><SelectField label="图例位置" disabled={locked}
+        value={String(chart.legendPosition ?? "auto")} options={[
           { value: "auto", label: "默认" }, { value: "top-left", label: "顶部偏左" }, { value: "top-center", label: "顶部居中" },
           { value: "top-right", label: "顶部偏右" }, { value: "bottom-left", label: "底部偏左" },
           { value: "bottom-center", label: "底部居中" }, { value: "bottom-right", label: "底部偏右" },
@@ -753,16 +796,16 @@ export default function ChartProperties({ node, patchChart }: {
         {number("图例文字大小", "legendFontSize", 10, 6, 36)}
         <ColorField label="图例文字颜色" value={String(chart.legendColor ?? "#cde3f7")} disabled={locked} onChange={value => set("legendColor", value)}/>
         {legendFontFields("legend", "图例文字")}
-        <Field label="图例文本"><Select size="small" aria-label="图例文本" disabled={locked} value={String(chart.legendTextMode ?? "auto")}
-          optionList={[{ value: "auto", label: "自适应" }, { value: "custom", label: "自定义" }]}
+        <Field label="图例文本"><SelectField label="图例文本" disabled={locked} value={String(chart.legendTextMode ?? "auto")}
+          options={[{ value: "auto", label: "自适应" }, { value: "custom", label: "自定义" }]}
           onChange={value => set("legendTextMode", value)}/></Field>
         {chart.legendTextMode === "custom" && number("图例文本宽度", "legendTextWidth", 30, 0, 2000)}
         {number("图例文字间距", "legendTextSpacing", 0, -10, 100)}
         {alphaColor("图例发光颜色", "legendShadowColor", "#ffffff")}
         {number("图例发光程度", "legendShadowBlur", 0, 0, 100)}
         {offsetField("图例发光偏移", chart.legendShadowOffset, value => set("legendShadowOffset", value))}
-        <Field label="图例图形"><Select size="small" aria-label="图例图形" disabled={locked} value={String(chart.legendMarker ?? "circle")}
-          optionList={[{ value: "circle", label: "圆点" }, { value: "square", label: "方块" },
+        <Field label="图例图形"><SelectField label="图例图形" disabled={locked} value={String(chart.legendMarker ?? "circle")}
+          options={[{ value: "circle", label: "圆点" }, { value: "square", label: "方块" },
             { value: "roundSquare", label: "圆角方块" }, { value: "triangle", label: "三角形" },
             { value: "diamond", label: "菱形" }, { value: "line", label: "线条" }]}
           onChange={value => set("legendMarker", value)}/></Field>
@@ -782,8 +825,8 @@ export default function ChartProperties({ node, patchChart }: {
           {imageField("左侧背景图片", "legendPageLeftImage", legendLeftImageRef)}
         </>}
         {toggle("点击图例切换显示", "legendInteractive")}</>}
-    </section></Collapse.Panel>}
-    <Collapse.Panel header="提示信息" itemKey="tooltip"><section className="property-section">
+    </section></Panel>}
+    <Panel header="提示信息" itemKey="tooltip"><section className="property-section">
       {toggle("显示悬浮提示", "showTooltip")}
       {flag("showTooltip") && <>
         <div className="chart-label-tabs chart-tooltip-tabs" role="tablist" aria-label="提示信息设置">
@@ -798,20 +841,20 @@ export default function ChartProperties({ node, patchChart }: {
           {number("提示信息上下内边距", "tooltipPaddingY", 7, 0, 100)}
           {number("提示信息圆角", "tooltipRadius", 4, 0, 50)}
           {toggle("显示图标", "tooltipShowIcon", false)}
-          <Field label="提示框位置"><Select size="small" aria-label="提示框位置" disabled={locked} value={String(chart.tooltipPosition ?? "auto")}
-            optionList={[{ value: "auto", label: "自动" }, { value: "center", label: "居中" }]}
+          <Field label="提示框位置"><SelectField label="提示框位置" disabled={locked} value={String(chart.tooltipPosition ?? "auto")}
+            options={[{ value: "auto", label: "自动" }, { value: "center", label: "居中" }]}
             onChange={value => set("tooltipPosition", value)}/></Field>
         </div>}
         {activeTooltipTab === "format" && <div role="tabpanel">
-          <Field label="Y 轴数值格式"><Select size="small" aria-label="Y 轴数值格式" disabled={locked} value={String(chart.tooltipFormat ?? "normal")}
-            optionList={[{ value: "normal", label: "数值" }, { value: "percent", label: "百分比" }]}
+          <Field label="Y 轴数值格式"><SelectField label="Y 轴数值格式" disabled={locked} value={String(chart.tooltipFormat ?? "normal")}
+            options={[{ value: "normal", label: "数值" }, { value: "percent", label: "百分比" }]}
             onChange={value => set("tooltipFormat", value)}/></Field>
           {toggle("Y 轴千分位分隔", "tooltipComma", false)}
           {number("Y 轴小数位数", "tooltipDecimals", num("decimals", 0), 0, 6)}
           {toggle("Y 轴小数补零", "tooltipPadZeros", flag("labelPadZeros"))}
           {hasRightAxis && <>
-            <Field label="右侧 Y 轴数值格式"><Select size="small" aria-label="右侧 Y 轴数值格式" disabled={locked} value={String(chart.tooltipRightFormat ?? "normal")}
-              optionList={[{ value: "normal", label: "数值" }, { value: "percent", label: "百分比" }]}
+            <Field label="右侧 Y 轴数值格式"><SelectField label="右侧 Y 轴数值格式" disabled={locked} value={String(chart.tooltipRightFormat ?? "normal")}
+              options={[{ value: "normal", label: "数值" }, { value: "percent", label: "百分比" }]}
               onChange={value => set("tooltipRightFormat", value)}/></Field>
             {toggle("右侧 Y 轴千分位分隔", "tooltipRightComma", false)}
             {number("右侧 Y 轴小数位数", "tooltipRightDecimals", num("decimals", 0), 0, 6)}
@@ -848,8 +891,8 @@ export default function ChartProperties({ node, patchChart }: {
           {toggle("显示垂直辅助线", "tooltipShowVerticalPointer", false)}
           {toggle("显示水平辅助线", "tooltipShowHorizontalPointer", false)}
           {(flag("tooltipShowVerticalPointer", false) || flag("tooltipShowHorizontalPointer", false)) && <>
-            <Field label="辅助线类型"><Select size="small" aria-label="辅助线类型" disabled={locked} value={String(chart.tooltipPointerStyle ?? "dashed")}
-              optionList={[{ value: "solid", label: "实线" }, { value: "dashed", label: "虚线" }]}
+            <Field label="辅助线类型"><SelectField label="辅助线类型" disabled={locked} value={String(chart.tooltipPointerStyle ?? "dashed")}
+              options={[{ value: "solid", label: "实线" }, { value: "dashed", label: "虚线" }]}
               onChange={value => set("tooltipPointerStyle", value)}/></Field>
             <ColorField label="辅助线颜色" value={String(chart.tooltipPointerColor ?? "#999999")} disabled={locked}
               onChange={value => set("tooltipPointerColor", value)}/>
@@ -865,6 +908,6 @@ export default function ChartProperties({ node, patchChart }: {
           </>}
         </div>}
       </>}
-    </section></Collapse.Panel>
-  </Collapse></>;
+    </section></Panel>
+  </Panels></>;
 }

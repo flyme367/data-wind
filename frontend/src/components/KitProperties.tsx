@@ -1,6 +1,22 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Button, Cascader, Collapse, Dropdown, Input, InputNumber, Modal, Radio, RadioGroup, Select, Slider, Switch, TextArea, Toast } from "@douyinfe/semi-ui";
-import { Ellipsis, GripVertical, Italic, Plus, Search, Strikethrough, Trash2, Underline, Upload, X } from "lucide-react";
+import { Children, cloneElement, isValidElement, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { NumberInput } from "@/components/ui-ext/number-input";
+import { Toast } from "@/lib/toast";
+import {
+  Close, DeleteTwo, Down, Drag, MoreOne, Plus, Search, Strikethrough, TextItalic, TextUnderline, Upload,
+} from "@icon-park/react";
 import type { SceneNode } from "../types";
 import { KIT_CITY_GEOMETRY_OPTION, KIT_CITY_TYPE, KIT_CONDITION_STYLES, kitChoiceItems, kitChoiceTree, kitChoiceTreeItems, kitColor, kitFileUrl, kitMetadata, kitOptions,
   kitPrivateData, kitRecord, kitRows, type ReferenceKitPiece, type ReferenceKitWidget } from "../data/kitRuntime";
@@ -17,14 +33,73 @@ import { KIT_WEATHER_TYPE, kitWeatherCity, kitWeatherConditions, kitWeatherIconK
 import weatherCities from "../data/kitWeatherCities.json";
 import KitModelPreview, { KitScenePreview } from "./KitModelPreview";
 
+/** 属性面板折叠分区：受控 Collapsible，展开态由 Panels 的 Set 集中管理。 */
+function Panel({ itemKey, header, open = false, onOpenChange, children }: {
+  itemKey: string; header: ReactNode; open?: boolean; onOpenChange?: (open: boolean) => void; children?: ReactNode;
+}) {
+  return <Collapsible open={open} onOpenChange={onOpenChange} data-panel={itemKey}>
+    <CollapsibleTrigger className="properties-collapse-header" aria-label={typeof header === "string" ? header : undefined}>
+      <span className="flex-1 text-left">{header}</span>
+      <Down theme="outline" size={12} className="shrink-0 transition-transform" style={{ transform: open ? undefined : "rotate(-90deg)" }}/>
+    </CollapsibleTrigger>
+    <CollapsibleContent className="properties-collapse-content">{children}</CollapsibleContent>
+  </Collapsible>;
+}
+function Panels({ defaultKeys = [], className, children }: {
+  defaultKeys?: string[]; className?: string; children?: ReactNode;
+}) {
+  const [openKeys, setOpenKeys] = useState<Set<string>>(() => new Set(defaultKeys));
+  const toggle = (itemKey: string, next: boolean) => setOpenKeys(keys => {
+    const update = new Set(keys); if (next) update.add(itemKey); else update.delete(itemKey); return update;
+  });
+  return <div className={className}>{Children.map(children, child => {
+    if (!isValidElement(child)) return child;
+    const itemKey = (child.props as { itemKey?: unknown }).itemKey;
+    if (typeof itemKey !== "string") return child;
+    return cloneElement(child as React.ReactElement<React.ComponentProps<typeof Panel>>, {
+      open: openKeys.has(itemKey), onOpenChange: next => toggle(itemKey, next),
+    });
+  })}</div>;
+}
+/** Semi Select → shadcn Select：受控 value + onValueChange，optionList 展开成 SelectItem。 */
+function SelectField({ label, value, options, disabled, placeholder, onChange }: {
+  label?: string; value?: string | null; options: readonly { value: string; label: string }[];
+  disabled?: boolean; placeholder?: string; onChange: (value: string) => void;
+}) {
+  return <Select value={value ?? null} onValueChange={value => typeof value === "string" && onChange(value)} disabled={disabled}>
+    <SelectTrigger aria-label={label} size="sm" className="w-full"><SelectValue placeholder={placeholder}/></SelectTrigger>
+    <SelectContent>{options.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+  </Select>;
+}
+/** Semi Select multiple → DropdownMenu + CheckboxItem 多选。 */
+function MultiSelect({ label, value, options, disabled, placeholder, onChange }: {
+  label?: string; value?: string[]; options: readonly { value: string; label: string }[];
+  disabled?: boolean; placeholder?: string; onChange: (next: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const toggle = (optionValue: string, checked: boolean) =>
+    onChange(checked ? [...value ?? [], optionValue] : (value ?? []).filter(item => item !== optionValue));
+  return <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenuTrigger disabled={disabled} render={<Button variant="outline" size="sm" className="w-full justify-between font-normal" aria-label={label}>
+      <span className="truncate text-left text-xs">{value?.length
+        ? value.map(item => options.find(option => option.value === item)?.label ?? item).join("、") : placeholder ?? "请选择"}</span>
+      <Down theme="outline" size={12} className="shrink-0 opacity-60"/>
+    </Button>}/>
+    <DropdownMenuContent align="end" className="max-h-72 overflow-y-auto">
+      {options.map(option => <DropdownMenuCheckboxItem key={option.value} checked={value?.includes(option.value) ?? false}
+        onCheckedChange={checked => toggle(option.value, checked === true)}>{option.label}</DropdownMenuCheckboxItem>)}
+    </DropdownMenuContent>
+  </DropdownMenu>;
+}
+
 export function JsonValueEditor({ label, value, disabled, onChange }: ValueProps) {
   const serialized = JSON.stringify(value, null, 2) ?? "null";
   const [draft, setDraft] = useState(serialized);
   const [error, setError] = useState("");
   useEffect(() => { setDraft(serialized); setError(""); }, [serialized]);
   return <div className="kit-json-field">
-    <TextArea aria-label={label} value={draft} disabled={disabled} rows={6} spellCheck={false}
-      onChange={setDraft} onBlur={() => {
+    <Textarea aria-label={label} value={draft} disabled={disabled} rows={6} spellCheck={false}
+      onChange={event => setDraft(event.target.value)} onBlur={() => {
         try { const next: unknown = JSON.parse(draft); onChange(next); setError(""); }
         catch { setError("JSON 格式无效，请检查括号和逗号"); }
       }}/>
@@ -72,16 +147,16 @@ function KitStringChoices({ label, value, disabled, emptyNewItem = false, onChan
             const next = index + (event.key === "ArrowUp" ? -1 : 1);
             move(index, next); requestAnimationFrame(() => handles.current[next]?.focus());
           }
-        }}><GripVertical size={14}/></button>
+        }}><Drag size={14}/></button>
       <BufferedInput label={`${label}第${index + 1}项`} value={item} disabled={disabled}
         onChange={next => onChange(value.map((part, at) => at === index ? next : part), { previousIndices: indices() })}/>
       <button type="button" className="kit-choice-remove" disabled={disabled} aria-label={`删除${label}第${index + 1}项`}
         onClick={() => onChange(value.filter((_, at) => at !== index),
-          { previousIndices: indices().filter(at => at !== index) })}><Trash2 size={14}/></button>
+          { previousIndices: indices().filter(at => at !== index) })}><DeleteTwo size={14}/></button>
     </div>)}
-    <Button size="small" theme="borderless" icon={<Plus size={12}/>} disabled={disabled}
+    <Button size="sm" variant="ghost" disabled={disabled}
       onClick={() => onChange([...value, emptyNewItem ? "" : `选项${value.length + 1}`],
-        { previousIndices: [...indices(), -1] })}>添加一项</Button>
+        { previousIndices: [...indices(), -1] })}><Plus size={12}/>添加一项</Button>
   </div>;
 }
 
@@ -100,8 +175,8 @@ function KitColorEditor({ label, value, disabled, onChange }: ValueProps) {
     const gradient = value as { angle?: string | number; colors?: { color: string; position: number }[] };
     const stops = gradient.colors ?? [];
     return <div className="kit-color-stops">
-      <Button size="small" theme="borderless" disabled={disabled} onClick={() => onChange(css)}>切换为纯色</Button>
-      <InputNumber size="small" hideButtons aria-label={`${label}渐变角度`} value={Number(gradient.angle ?? 0)} suffix="°"
+      <Button size="sm" variant="ghost" disabled={disabled} onClick={() => onChange(css)}>切换为纯色</Button>
+      <NumberInput size="small" hideButtons aria-label={`${label}渐变角度`} value={Number(gradient.angle ?? 0)} suffix="°"
         disabled={disabled} onChange={angle => typeof angle === "number" && onChange({ ...gradient, angle: String(angle) })}/>
       {stops.map((stop, index) => <div key={index} className="kit-color-stop-group">
         <div className="kit-color-stop">
@@ -110,30 +185,30 @@ function KitColorEditor({ label, value, disabled, onChange }: ValueProps) {
               colors: stops.map((item, at) => at === index ? { ...item, color: `${event.target.value}${rgba(item.color).slice(7)}` } : item) })}/>
           <BufferedInput label={`${label}色标${index + 1}颜色`} value={stop.color} disabled={disabled} onChange={color => onChange({ ...gradient,
             colors: stops.map((item, at) => at === index ? { ...item, color } : item) })}/>
-          <Button size="small" theme="borderless" icon={<X size={12}/>} disabled={disabled || stops.length < 2}
-            aria-label={`删除${label}色标${index + 1}`} onClick={() => onChange({ ...gradient, colors: stops.filter((_, at) => at !== index) })}/>
+          <Button size="sm" variant="ghost" disabled={disabled || stops.length < 2}
+            aria-label={`删除${label}色标${index + 1}`} onClick={() => onChange({ ...gradient, colors: stops.filter((_, at) => at !== index) })}><Close size={12}/></Button>
         </div>
         <div className="kit-color-stop">
           <span className="kit-stop-tag">位置</span>
-          <InputNumber size="small" hideButtons aria-label={`${label}色标位置${index + 1}`} value={Number(stop.position)} disabled={disabled} suffix="%"
+          <NumberInput size="small" hideButtons aria-label={`${label}色标位置${index + 1}`} value={Number(stop.position)} disabled={disabled} suffix="%"
             onChange={position => typeof position === "number" && onChange({ ...gradient,
               colors: stops.map((item, at) => at === index ? { ...item, position } : item) })}/>
           <span className="kit-stop-tag">透明</span>
-          <InputNumber size="small" hideButtons aria-label={`${label}色标透明度${index + 1}`} value={opacity(stop.color)} disabled={disabled} min={0} max={100} suffix="%"
+          <NumberInput size="small" hideButtons aria-label={`${label}色标透明度${index + 1}`} value={opacity(stop.color)} disabled={disabled} min={0} max={100} suffix="%"
             onChange={next => typeof next === "number" && onChange({ ...gradient,
               colors: stops.map((item, at) => at === index ? { ...item, color: alpha(item.color, next) } : item) })}/>
         </div>
       </div>)}
-      <Button size="small" theme="borderless" icon={<Plus size={12}/>} disabled={disabled}
-        onClick={() => onChange({ ...gradient, colors: [...stops, { color: "#ffffff", position: 100 }] })}>添加色标</Button>
+      <Button size="sm" variant="ghost" disabled={disabled}
+        onClick={() => onChange({ ...gradient, colors: [...stops, { color: "#ffffff", position: 100 }] })}><Plus size={12}/>添加色标</Button>
     </div>;
   }
   return <div className="kit-color-stops"><div className="kit-color-input"><input type="color" aria-label={`${label}取色`} disabled={disabled}
     value={rgba(value).slice(0, 7)} onChange={event => onChange(`${event.target.value}${rgba(value).slice(7)}`)}/>
     <BufferedInput label={label} value={String(value ?? "transparent")} disabled={disabled} onChange={onChange}/></div>
-    <InputNumber size="small" hideButtons aria-label={`${label}透明度`} value={opacity(value)} disabled={disabled} min={0} max={100} suffix="%"
+    <NumberInput size="small" hideButtons aria-label={`${label}透明度`} value={opacity(value)} disabled={disabled} min={0} max={100} suffix="%"
       onChange={next => typeof next === "number" && onChange(alpha(value, next))}/>
-    <Button size="small" theme="borderless" disabled={disabled}
+    <Button size="sm" variant="ghost" disabled={disabled}
       onClick={() => onChange({ angle: "0", colors: [{ color: css, position: 0 }, { color: css, position: 100 }] })}>切换为渐变</Button>
   </div>;
 }
@@ -152,14 +227,15 @@ function KitFontEditor({ label, value, disabled, onChange }: ValueProps) {
     : Object.hasOwn(font, "line-through") ? "line-through" : "deleteline";
   const update = (patch: Record<string, unknown>) => onChange({ ...font, ...patch });
   return <div className="kit-font-editor">
-    <Select size="small" aria-label={`${label}字体`} filter allowCreate disabled={disabled} value={family}
-      optionList={[{ value: family, label: family || "系统默认字体" }, ...widgetFontFamilies]}
+    <SelectField label={`${label}字体`} disabled={disabled} value={family}
+      options={[{ value: family, label: family || "系统默认字体" }, ...widgetFontFamilies]}
       onChange={next => update({ family: next })}/>
     <div className="kit-font-size-row">
-      <Select size="small" aria-label={`${label}字重`} disabled={disabled} value={Number.isFinite(weight) ? weight : 400}
-        optionList={weights} onChange={next => update({ weight: Number(next),
+      <SelectField label={`${label}字重`} disabled={disabled} value={String(Number.isFinite(weight) ? weight : 400)}
+        options={weights.map(item => ({ value: String(item.value), label: item.label }))}
+        onChange={next => update({ weight: Number(next),
           ...(Object.hasOwn(font, "bold") ? { bold: Number(next) >= 600 } : {}) })}/>
-      <InputNumber size="small" hideButtons aria-label={`${label}字号`} disabled={disabled} min={0} suffix="px"
+      <NumberInput size="small" hideButtons aria-label={`${label}字号`} disabled={disabled} min={0} suffix="px"
         value={Number.isFinite(size) ? size : 20} onChange={next => typeof next === "number" && update({ size: next })}/>
     </div>
     <div className="kit-font-tools">
@@ -168,7 +244,7 @@ function KitFontEditor({ label, value, disabled, onChange }: ValueProps) {
         <div className="kit-font-palette"><KitColorEditor label={`${label}颜色`} value={font.color ?? "#ffffff"}
           disabled={disabled} onChange={color => update({ color })}/></div>
       </details>
-      {([ ["italic", "倾斜", Italic], ["underline", "下划线", Underline], [strikeKey, "删除线", Strikethrough] ] as const)
+      {([ ["italic", "倾斜", TextItalic], ["underline", "下划线", TextUnderline], [strikeKey, "删除线", Strikethrough] ] as const)
         .map(([key, name, Icon]) => <button type="button" key={name} disabled={disabled} aria-label={`${label}${name}`}
           title={name} aria-pressed={font[key] === true} onClick={() => {
             const next = font[key] !== true;
@@ -190,8 +266,8 @@ function KitFileEditor({ label, value, disabled, onChange }: ValueProps) {
       && <img src={url} alt={`${label}预览`}/>}
     <BufferedInput label={label} value={file ? String(file.relativePath ?? "") : String(value ?? "")}
       disabled={disabled} onChange={setUrl} placeholder="图片地址或本地资源"/>
-    <Button size="small" theme="borderless" icon={<Upload size={12}/>} disabled={disabled}
-      onClick={() => input.current?.click()}>选择文件</Button>
+    <Button size="sm" variant="ghost" disabled={disabled}
+      onClick={() => input.current?.click()}><Upload size={12}/>选择文件</Button>
     <input ref={input} hidden type="file" aria-label={`上传${label}`} accept="image/*,video/*,audio/*,.pdf,.hdr,.env,.dds,.glb,.gltf,.obj,.ktx2,.bin,.json" onChange={event => {
       const selected = event.target.files?.[0]; if (!selected) return;
       if (selected.size > 700_000) { Toast.warning("请选择小于 700 KB 的文件，较大文件可填写资源地址"); return; }
@@ -207,18 +283,37 @@ const weatherCityTree = (weatherCities as [number, string, [number, string][]][]
   children: cities.length ? cities.map(([code, label]) => ({ label, value: String(code) })) : undefined,
 }));
 
+/** Semi Cascader → DropdownMenu 两级列表（省份子菜单悬停展开，对齐 showNext="hover"）。 */
 function KitWeatherCityEditor({ label, value, disabled, onChange }: ValueProps) {
   const code = kitWeatherCity(value);
   const province = weatherCityTree.find(item => item.value.slice(0, 2) === code.slice(0, 2));
   const city = province?.children?.find(item => item.value === code);
   const unknown = code && !city && code !== province?.value;
-  const tree = unknown ? [...weatherCityTree, { label: code, value: code }] : weatherCityTree;
-  return <Cascader size="small" changeOnSelect filterTreeNode aria-label={label} disabled={disabled} treeData={tree}
-    showNext="hover" style={{ width: "100%" }} value={city ? [province!.value, code] : code ? [code] : undefined}
-    onChange={next => {
-      const selected = kitWeatherCity(Array.isArray(next) ? next.at(-1) : next);
-      if (selected) onChange(Number(selected));
-    }}/>;
+  const tree = unknown ? [...weatherCityTree, { label: code, value: code, children: undefined }] : weatherCityTree;
+  const [open, setOpen] = useState(false);
+  const pick = (selected: string) => {
+    const city = kitWeatherCity(selected);
+    if (city) onChange(Number(city));
+    setOpen(false);
+  };
+  return <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenuTrigger disabled={disabled} render={
+      <Button variant="outline" size="sm" className="w-full justify-between font-normal" aria-label={label}>
+        <span className="truncate text-left text-xs">{city ? `${province?.label ?? ""} / ${city.label}` : code || "请选择省市"}</span>
+        <Down theme="outline" size={12} className="shrink-0 opacity-60"/>
+      </Button>}/>
+    <DropdownMenuContent align="end" className="max-h-72 w-52 overflow-y-auto">
+      {tree.map(item => item.children?.length
+        ? <DropdownMenuSub key={item.value}>
+          <DropdownMenuSubTrigger className="text-xs">{item.label}</DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="max-h-72 overflow-y-auto">
+            <DropdownMenuItem onClick={() => pick(item.value)}>{item.label}</DropdownMenuItem>
+            {item.children.map(child => <DropdownMenuItem key={child.value} onClick={() => pick(child.value)}>{child.label}</DropdownMenuItem>)}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+        : <DropdownMenuItem key={item.value} className="text-xs" onClick={() => pick(item.value)}>{item.label}</DropdownMenuItem>)}
+    </DropdownMenuContent>
+  </DropdownMenu>;
 }
 
 function KitWeatherKeyInput({ label, value, disabled, onChange }: {
@@ -227,8 +322,9 @@ function KitWeatherKeyInput({ label, value, disabled, onChange }: {
   const [draft, setDraft] = useState(value);
   useEffect(() => { setDraft(value); }, [value]);
   const commit = () => { if (draft.trim() !== value) onChange(draft.trim()); };
-  return <Input size="small" mode="password" aria-label={label} autoComplete="off" disabled={disabled}
-    value={draft} onChange={setDraft} onBlur={commit} onEnterPress={commit}/>;
+  return <Input type="password" className="h-7 text-xs" aria-label={label} autoComplete="off" disabled={disabled}
+    value={draft} onChange={event => setDraft(event.target.value)} onBlur={commit}
+    onKeyDown={event => { if (event.key === "Enter") commit(); }}/>;
 }
 
 const weatherInfoTabs = [
@@ -266,19 +362,19 @@ function KitFieldEditor({ label, optionKey, value, definition, fields, disabled,
       const summary = binding.summary === "avg" ? "mean" : String(binding.summary || "none");
       return <div className="kit-field-picker" key={index}>
         <div>
-          <Select size="small" aria-label={`${label}第${index + 1}项`} value={uid} optionList={choicesForBinding}
-            disabled={disabled} filter onChange={next => select(next, binding, index)}/>
-          <Button size="small" theme="borderless" aria-label={`删除${label}第${index + 1}项`} icon={<X size={12}/>}
-            disabled={disabled || bindings.length <= (definition?.min ?? 0)} onClick={() => change(bindings.filter((_, at) => at !== index))}/>
+          <SelectField label={`${label}第${index + 1}项`} value={uid} options={choicesForBinding}
+            disabled={disabled} onChange={next => select(next, binding, index)}/>
+          <Button size="sm" variant="ghost" aria-label={`删除${label}第${index + 1}项`}
+            disabled={disabled || bindings.length <= (definition?.min ?? 0)} onClick={() => change(bindings.filter((_, at) => at !== index))}><Close size={12}/></Button>
         </div>
-        {/^axis-(y|line|size|value|values)$/.test(optionKey ?? "") && <Select size="small" aria-label={`${label}第${index + 1}项汇总`}
-          disabled={disabled} value={summary} optionList={summaries.some(item => item.value === summary) ? summaries : [...summaries, { label: summary, value: summary }]}
+        {/^axis-(y|line|size|value|values)$/.test(optionKey ?? "") && <SelectField label={`${label}第${index + 1}项汇总`}
+          disabled={disabled} value={summary} options={summaries.some(item => item.value === summary) ? summaries : [...summaries, { label: summary, value: summary }]}
           onChange={next => change(bindings.map((entry, at) => index === at ? { ...entry, summary: next } : entry))}/>}
       </div>;
     })}
     {bindings.length < (multiple ? definition?.max ?? Infinity : 1) &&
-      <Select size="small" aria-label={`添加${label}`} placeholder="选择数据字段" filter disabled={disabled}
-        value={undefined} optionList={choices} onChange={next => select(next, {}, bindings.length)}/>}
+      <SelectField label={`添加${label}`} placeholder="选择数据字段" disabled={disabled}
+        value={null} options={choices} onChange={next => select(next, {}, bindings.length)}/>}
   </div>;
 }
 
@@ -316,12 +412,12 @@ function KitRelatedFields({ options, widgetType, fields, disabled, onChange }: {
         onChange={next => save(entries, { ...mappings, [entry.name]: {
           ...kitRecord(mappings[entry.name]), "related-field": next,
         } })}/></Field>
-      <Button size="small" theme="borderless" disabled={disabled} aria-label={`删除${entry.alias}动态字段`}
+      <Button size="sm" variant="ghost" disabled={disabled} aria-label={`删除${entry.alias}动态字段`}
         onClick={() => { const next = { ...mappings }; delete next[entry.name];
           save(entries.filter(item => item.name !== entry.name), next); }}>移除此绑定</Button>
     </div>)}
-    {candidates.length > 0 && <Select size="small" filter aria-label="添加动态数据字段"
-      placeholder="选择要绑定数据的属性" disabled={disabled} optionList={candidates} value={undefined}
+    {candidates.length > 0 && <SelectField label="添加动态数据字段"
+      placeholder="选择要绑定数据的属性" disabled={disabled} options={candidates} value={null}
       onChange={value => {
         const chosen = candidates.find(item => item.value === String(value));
         if (chosen) save([...entries, { name: chosen.value, alias: chosen.alias }],
@@ -357,16 +453,16 @@ function KitClusterEditor({ label, optionKey, value, definition, widgetType, fie
             </Field>;
           })}
         </div>
-        <Button size="small" theme="borderless" disabled={disabled} onClick={() => {
+        <Button size="sm" variant="ghost" disabled={disabled} onClick={() => {
           const { [index]: _removed, ...rest } = cluster;
           onChange({ ...rest, indexes: indexes.filter(id => id !== index) });
         }}>删除此项</Button>
       </details>;
     })}
-    <Button size="small" theme="borderless" icon={<Plus size={12}/>} disabled={disabled} onClick={() => {
+    <Button size="sm" variant="ghost" disabled={disabled} onClick={() => {
       const index = `idx-${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`;
       onChange({ ...cluster, indexes: [...indexes, index], [index]: structuredClone(declared.length ? defaults : cluster[indexes.at(-1) ?? ""] ?? {}) });
-    }}>添加{label}</Button>
+    }}><Plus size={12}/>添加{label}</Button>
   </div>;
 }
 
@@ -383,10 +479,10 @@ export function KitOptionValue({ label, optionKey = "", value, definition, widge
         <KitWeatherKeyInput label={`${label}第${index + 1}项`} value={item} disabled={disabled}
           onChange={next => onChange(keys.map((part, at) => at === index ? next : part))}/>
         <button type="button" className="kit-choice-remove" disabled={disabled} aria-label={`删除${label}第${index + 1}项`}
-          onClick={() => onChange(keys.filter((_, at) => at !== index))}><Trash2 size={14}/></button>
+          onClick={() => onChange(keys.filter((_, at) => at !== index))}><DeleteTwo size={14}/></button>
       </div>)}
-      <Button size="small" theme="borderless" icon={<Plus size={12}/>} disabled={disabled}
-        onClick={() => onChange([...keys, ""])}>添加{label}</Button>
+      <Button size="sm" variant="ghost" disabled={disabled}
+        onClick={() => onChange([...keys, ""])}><Plus size={12}/>添加{label}</Button>
     </div>;
   }
   if (widgetType === KIT_WEATHER_TYPE && optionKey === "icon-list") {
@@ -420,22 +516,19 @@ export function KitOptionValue({ label, optionKey = "", value, definition, widge
         <summary>{`颜色 ${index + 1}`}</summary>
         <KitColorEditor label={`${label}颜色${index + 1}`} value={color} disabled={disabled}
           onChange={next => onChange(colors.map((part, at) => at === index ? next : part))}/>
-        <Button size="small" theme="borderless" disabled={disabled}
+        <Button size="sm" variant="ghost" disabled={disabled}
           onClick={() => onChange(colors.filter((_, at) => at !== index))}>删除此颜色</Button>
       </details>)}
-      <Button size="small" theme="borderless" icon={<Plus size={12}/>} disabled={disabled}
-        onClick={() => onChange([...colors, structuredClone(colors.at(-1) ?? "#ffffff")])}>添加颜色</Button>
+      <Button size="sm" variant="ghost" disabled={disabled}
+        onClick={() => onChange([...colors, structuredClone(colors.at(-1) ?? "#ffffff")])}><Plus size={12}/>添加颜色</Button>
     </div>;
   }
   if (def.options?.length && Array.isArray(value) && value.every(item => typeof item === "string" || typeof item === "number")) {
     const options = [...def.options];
     for (const item of value) if (!options.some(option => option.value === item)) options.push({ label: String(item), value: item });
-    return <Select size="small" multiple filter aria-label={label} disabled={disabled}
-      value={value.map(String)} optionList={options.map(option => ({ ...option, value: String(option.value) }))}
-      onChange={next => {
-        if (!Array.isArray(next)) return;
-        onChange(next.map(item => options.find(option => String(option.value) === item)?.value ?? item));
-      }}/>;
+    return <MultiSelect label={label} disabled={disabled}
+      value={value.map(String)} options={options.map(option => ({ ...option, value: String(option.value) }))}
+      onChange={next => onChange(next.map(item => options.find(option => String(option.value) === item)?.value ?? item))}/>;
   }
   if (def.options?.length && (value == null || typeof value === "string" || typeof value === "number")) {
     const options = value == null || def.options.some(option => option.value === value) ? def.options
@@ -443,27 +536,29 @@ export function KitOptionValue({ label, optionKey = "", value, definition, widge
     const change = (next: unknown) => onChange(options.find(option => String(option.value) === next)?.value ?? next);
     if (!["filter-condition-select", "selected-key", "dropdown-default-value"].includes(optionKey)
         && options.length <= 3 && options.every(option => option.label.length < 9))
-      return <RadioGroup type="button" buttonSize="small" aria-label={label} disabled={disabled}
-        value={value == null ? undefined : String(value)} onChange={event => change(event.target.value)}>
-        {options.map(option => <Radio key={option.value} value={String(option.value)}>{option.label}</Radio>)}
+      return <RadioGroup disabled={disabled} className="flex gap-3" aria-label={label}
+        value={value == null ? null : String(value)} onValueChange={next => change(next)}>
+        {options.map(option => <label key={option.value} className="flex items-center gap-1.5">
+          <RadioGroupItem value={String(option.value)}/><span className="text-xs">{option.label}</span>
+        </label>)}
       </RadioGroup>;
-    return <Select size="small" aria-label={label} disabled={disabled} value={value == null ? undefined : String(value)}
-      optionList={options.map(option => ({ ...option, value: String(option.value) }))}
+    return <SelectField label={label} disabled={disabled} value={value == null ? null : String(value)}
+      options={options.map(option => ({ ...option, value: String(option.value) }))}
       onChange={change}/>;
   }
   if (optionKey === "opacity" && typeof value === "number") return <div className="kit-opacity-input">
-    <Slider aria-label={label} value={value} min={0} max={100} disabled={disabled}
-      onAfterChange={next => typeof next === "number" && onChange(next)}/>
-    <InputNumber size="small" hideButtons aria-label={`${label}百分比`} value={value} min={0} max={100} suffix="%"
+    <Slider aria-label={label} value={[value]} min={0} max={100} disabled={disabled}
+      onValueChange={next => { const nextValue = Array.isArray(next) ? next[0] : next; typeof nextValue === "number" && onChange(nextValue); }}/>
+    <NumberInput size="small" hideButtons aria-label={`${label}百分比`} value={value} min={0} max={100} suffix="%"
       disabled={disabled} onChange={next => typeof next === "number" && onChange(next)}/>
   </div>;
-  if (typeof value === "boolean" || def.type === "boolean") return <Switch size="small" aria-label={label} disabled={disabled}
-    checked={value === true} onChange={checked => onChange(checked)}/>;
+  if (typeof value === "boolean" || def.type === "boolean") return <Switch size="sm" aria-label={label} disabled={disabled}
+    checked={value === true} onCheckedChange={checked => onChange(checked)}/>;
   if (def.type === "file" || (value && typeof value === "object" && "relativePath" in value))
     return <KitFileEditor label={label} value={value} disabled={disabled} onChange={onChange}/>;
   if (def.type === "color" && !Array.isArray(value)) return <KitColorEditor label={label} value={value} disabled={disabled} onChange={onChange}/>;
   if (typeof value === "number" || (def.type === "number" && (value == null || typeof value === "string" && Number.isFinite(Number(value)))))
-    return <InputNumber size="small" aria-label={label} disabled={disabled} value={value == null ? undefined : Number(value)}
+    return <NumberInput size="small" aria-label={label} disabled={disabled} value={value == null ? undefined : Number(value)}
       min={def.min} max={def.max} step={def.step ?? 1} onChange={next => typeof next === "number"
         && Number.isFinite(next) && onChange(typeof value === "string" ? String(next) : next)}/>;
   if (typeof value === "string" || (value == null && (def.type === "text" || def.type === "select")))
@@ -473,7 +568,7 @@ export function KitOptionValue({ label, optionKey = "", value, definition, widge
       : ["size", "item-size", "text-tilt"].includes(optionKey) ? ["W", "H"]
       : value.length === 3 ? ["X", "Y", "Z"] : ["X", "Y", "Z", "W"];
     return <div className="kit-vector-input">{value.map((item, index) => <span key={index}><small>{names[index]}</small>
-      <InputNumber size="small" hideButtons aria-label={`${label}${names[index]}`} disabled={disabled} value={item}
+      <NumberInput size="small" hideButtons aria-label={`${label}${names[index]}`} disabled={disabled} value={item}
         min={optionKey === "size" ? 1 : undefined} onChange={next => typeof next === "number" && onChange(value.map((part, at) => at === index ? next : part))}/>
     </span>)}</div>;
   }
@@ -496,10 +591,10 @@ export function KitOptionValue({ label, optionKey = "", value, definition, widge
       <KitOptionValue label={`${label}第${index + 1}项`} optionKey={optionKey} value={item} disabled={disabled}
         definition={{ ...def, type: undefined, options: undefined }} depth={depth + 1} fields={fields} menuChoices={menuChoices}
         onChange={next => onChange(value.map((part, at) => at === index ? next : part))}/>
-      <Button size="small" theme="borderless" disabled={disabled} onClick={() => onChange(value.filter((_, at) => at !== index))}>删除此项</Button>
+      <Button size="sm" variant="ghost" disabled={disabled} onClick={() => onChange(value.filter((_, at) => at !== index))}>删除此项</Button>
     </details>)}
-    <Button size="small" theme="borderless" icon={<Plus size={12}/>} disabled={disabled}
-      onClick={() => onChange([...value, structuredClone(value.at(-1) ?? "")])}>添加一项</Button>
+    <Button size="sm" variant="ghost" disabled={disabled}
+      onClick={() => onChange([...value, structuredClone(value.at(-1) ?? "")])}><Plus size={12}/>添加一项</Button>
   </div>;
   return <JsonValueEditor key={JSON.stringify(value)} label={label} value={value} disabled={disabled} onChange={onChange}/>;
 }
@@ -558,11 +653,11 @@ export function KitPieceProperties({ node, pieces, section = "style" }: {
   });
   return <section className="kit-piece-properties">
     <div className="kit-children"><span>三维场景对象</span>
-      <Select size="small" filter aria-label="三维场景对象" value={current.path.join("/")}
-        optionList={entries.map(entry => ({ label: entry.label, value: entry.path.join("/") }))}
+      <SelectField label="三维场景对象" value={current.path.join("/")}
+        options={entries.map(entry => ({ label: entry.label, value: entry.path.join("/") }))}
         onChange={next => { setSelectedPath(String(next)); setStateId(""); }}/>
-      {states.length > 0 && <Select size="small" aria-label="三维对象状态" value={stateId}
-        optionList={[{ label: "默认状态", value: "" }, ...states.map(state => ({ label: state.name, value: state.uid }))]}
+      {states.length > 0 && <SelectField label="三维对象状态" value={stateId}
+        options={[{ label: "默认状态", value: "" }, ...states.map(state => ({ label: state.name, value: state.uid }))]}
         onChange={next => setStateId(String(next))}/>}
       {section === "style" && <KitScenePreview pieces={pieces} selected={current.path.join("/")}
         edit={stateId ? { path: current.path.join("/"), state: stateId } : undefined}
@@ -579,18 +674,23 @@ export function KitPieceProperties({ node, pieces, section = "style" }: {
           patch("interacts", value);
         }}/></Field>
     </section> : <>
-    <div className="kit-property-search"><Input size="small" prefix={<Search size={13}/>} placeholder="搜索对象配置"
-      aria-label="搜索三维对象配置" value={query} showClear onChange={setQuery}/></div>
-    <Collapse key={`${node.id}-${selectedPath}-${stateId}-${query ? "search" : "normal"}`}
-      className="properties-collapse" expandIconPosition="left" defaultActiveKey={query ? [...groups.keys()] : ["基本设置", "基础设置"]}>
-      {[...groups].map(([group, fields]) => <Collapse.Panel key={group} header={group} itemKey={group}>
+    <div className="kit-property-search"><span className="relative block">
+      <Search size={13} className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-muted-foreground"/>
+      <Input className="h-7 pl-7 text-xs" placeholder="搜索对象配置"
+        aria-label="搜索三维对象配置" value={query} onChange={event => setQuery(event.target.value)}/>
+      {query && <button type="button" aria-label="清空搜索" className="absolute top-1/2 right-1.5 -translate-y-1/2 text-muted-foreground"
+        onClick={() => setQuery("")}><Close size={12}/></button>}
+    </span></div>
+    <Panels key={`${node.id}-${selectedPath}-${stateId}-${query ? "search" : "normal"}`}
+      className="properties-collapse" defaultKeys={query ? [...groups.keys()] : ["基本设置", "基础设置"]}>
+      {[...groups].map(([group, fields]) => <Panel key={group} header={group} itemKey={group}>
         <section className="property-section">{fields.map(([key, value, definition]) =>
           <div key={key} className="kit-option-row"><Field label={definition.label}>
             <KitOptionValue label={definition.label} optionKey={key} value={value} definition={definition}
               widgetType={piece.type} disabled={node.locked} onChange={next => patch(key, next)}/>
           </Field></div>)}</section>
-      </Collapse.Panel>)}
-    </Collapse>
+      </Panel>)}
+    </Panels>
     {!groups.size && <p className="properties-note">该对象没有匹配的配置项</p>}</>}
   </section>;
 }
@@ -772,13 +872,14 @@ export default function KitProperties({ node, editStateId, section = "style" }:
         {directions.map(direction => <button type="button" role="tab" key={direction} aria-selected={active === direction}
           onClick={() => setTab(direction)}>{labels[direction]}</button>)}
       </div>}
-      <Field label="选择模式"><RadioGroup type="button" buttonSize="small" aria-label={`${title}选择模式`}
-        disabled={node.locked} value={rule.mode} onChange={event => change(`${kind}-mode`, event.target.value)}>
-        <Radio value="blacklist">黑名单模式</Radio><Radio value="whitelist">白名单模式</Radio>
+      <Field label="选择模式"><RadioGroup disabled={node.locked} className="flex gap-3" aria-label={`${title}选择模式`}
+        value={rule.mode} onValueChange={value => change(`${kind}-mode`, value)}>
+        <label className="flex items-center gap-1.5"><RadioGroupItem value="blacklist"/><span className="text-xs">黑名单模式</span></label>
+        <label className="flex items-center gap-1.5"><RadioGroupItem value="whitelist"/><span className="text-xs">白名单模式</span></label>
       </RadioGroup></Field>
-      <Field label="组件名单"><Select size="small" multiple filter aria-label={`${title}组件名单`} placeholder="请选择..."
-        disabled={node.locked} value={chosen} optionList={choices}
-        onChange={next => change(`${kind}-elements`, Array.isArray(next) ? next.map(String) : [])}/></Field>
+      <Field label="组件名单"><MultiSelect label={`${title}组件名单`} placeholder="请选择..."
+        disabled={node.locked} value={chosen} options={choices}
+        onChange={next => change(`${kind}-elements`, next)}/></Field>
     </div>;
   };
   const conditions = state.settings?.boardDataConditions ?? [];
@@ -793,7 +894,7 @@ export default function KitProperties({ node, editStateId, section = "style" }:
       && !["size", "position", "rotate", "linkage-advanced", "selection-advanced"].includes(key)
       && ["boolean", "color", "number", "text", "select", "file", "font"].includes(definition.type ?? "");
     return <div key={`${node.id}-${editStateId ?? ""}-${key}`} className="kit-option-row" title={definition.label}>
-      <Field label={definition.label}>{key === "cover-path" ? <Button size="small" disabled={node.locked} onClick={() => {
+      <Field label={definition.label}>{key === "cover-path" ? <Button size="sm" disabled={node.locked} onClick={() => {
         void captureWidgetCover(node.id).then(relativePath => patch(key, { relativePath, __opt_type: "file" }))
           .catch(error => Toast.error(String(error)));
       }}>截屏</Button> : <KitOptionValue label={definition.label} optionKey={key} widgetType={meta.source.type}
@@ -808,24 +909,25 @@ export default function KitProperties({ node, editStateId, section = "style" }:
             patchOptions(kitChoiceEditPatch(options, key, next as string[], edit.previousIndices), key);
           else patch(key, next);
         }}/>}</Field>
-      {extensible && <Dropdown trigger="click" position="bottomRight" render={
-        <Dropdown.Menu>
-          <Dropdown.Item onClick={() => setConditionStyle({ key, definition, base: value,
+      {extensible && <DropdownMenu>
+        <DropdownMenuTrigger render={<button type="button" className="kit-option-extension" disabled={node.locked}
+          aria-label={`${definition.label}扩展设置`}><MoreOne size={14}/></button>}/>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => setConditionStyle({ key, definition, base: value,
             otherwise: Object.hasOwn(settings, "otherwise") ? settings.otherwise : value,
             rules: rules.flatMap(item => {
               const rule = kitRecord(item);
               return typeof rule.condition === "string" ? [{ condition: rule.condition, value: rule.value }] : [];
-            }) })}>条件样式</Dropdown.Item>
-          <Dropdown.Item onClick={() => setCodeExample(
+            }) })}>条件样式</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setCodeExample(
             `function onEvent(payload, event, dw) {\n  dw.setOption(${JSON.stringify(node.id)}, ${JSON.stringify(key)}, ${JSON.stringify(value ?? null)});\n}`,
-          )}>调用代码示例</Dropdown.Item>
-          <Dropdown.Item disabled={Object.hasOwn(dynamicFields, path)} onClick={() => patchOptions({
+          )}>调用代码示例</DropdownMenuItem>
+          <DropdownMenuItem disabled={Object.hasOwn(dynamicFields, path)} onClick={() => patchOptions({
             "related-entries": [...rowsForField, { name: path, alias: definition.label }],
             "related-fields": { ...dynamicFields, [path]: { "related-field": [] } },
-          }, "related-fields")}>生成数据字段</Dropdown.Item>
-        </Dropdown.Menu>
-      }><button type="button" className="kit-option-extension" disabled={node.locked}
-        aria-label={`${definition.label}扩展设置`}><Ellipsis size={14}/></button></Dropdown>}
+          }, "related-fields")}>生成数据字段</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>}
       {extensible && rules.length > 0 && <span className="kit-condition-indicator">已启用条件样式</span>}
       {value === true && key === "linkage-advanced" ? advancedEditor("linkage") : null}
       {value === true && key === "selection-advanced" ? advancedEditor("selection") : null}
@@ -836,77 +938,90 @@ export default function KitProperties({ node, editStateId, section = "style" }:
       <span>{info?.name ?? meta.label}{info?.version ? `  |  v${info.version}` : ""}</span>
     </div>}
     {section === "style" && children.length > 0 && <div className="kit-children"><span>子组件</span>
-      <Select size="small" filter aria-label="选择套件子组件" placeholder={`包含 ${children.length} 个子组件`}
-        optionList={children.map(child => ({ label: child.name, value: child.id }))}
+      <SelectField label="选择套件子组件" placeholder={`包含 ${children.length} 个子组件`} value={null}
+        options={children.map(child => ({ label: child.name, value: child.id }))}
         onChange={id => getSceneBridge().post({ type: "select", id: String(id) })}/>
     </div>}
     {section === "style" && meta.source.type === KIT_CITY_TYPE &&
       <section className="property-section"><Field label="画布显示几何">
-        <Switch size="small" aria-label="画布显示几何" disabled={node.locked}
+        <Switch size="sm" aria-label="画布显示几何" disabled={node.locked}
           checked={options[KIT_CITY_GEOMETRY_OPTION] === true}
-          onChange={value => patch(KIT_CITY_GEOMETRY_OPTION, value)}/>
+          onCheckedChange={value => patch(KIT_CITY_GEOMETRY_OPTION, value)}/>
       </Field></section>}
-    <div className="kit-property-search"><Input size="small" prefix={<Search size={13}/>} placeholder="搜索配置项"
-      aria-label="搜索套件配置项" value={query} showClear onChange={setQuery}/>
-      <Button size="small" theme="borderless" onClick={() => setShowAll(!showAll)} aria-pressed={showAll}>{showAll ? "常用" : "全部"}</Button>
+    <div className="kit-property-search"><span className="relative block">
+      <Search size={13} className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-muted-foreground"/>
+      <Input className="h-7 pl-7 pr-7 text-xs" placeholder="搜索配置项"
+        aria-label="搜索套件配置项" value={query} onChange={event => setQuery(event.target.value)}/>
+      {query && <button type="button" aria-label="清空搜索" className="absolute top-1/2 right-1.5 -translate-y-1/2 text-muted-foreground"
+        onClick={() => setQuery("")}><Close size={12}/></button>}
+    </span>
+      <Button size="sm" variant="ghost" onClick={() => setShowAll(!showAll)} aria-pressed={showAll}>{showAll ? "常用" : "全部"}</Button>
     </div>
-    {codeExample && <Modal title="调用代码示例" visible footer={null} onCancel={() => setCodeExample("")}>
-      <TextArea aria-label="调用代码示例" readOnly value={codeExample} rows={5}/>
-    </Modal>}
-    {conditionStyle && <Modal title={`${conditionStyle.definition.label} · 条件样式`} visible
-      onCancel={() => setConditionStyle(null)} okText="确定" cancelText="取消" onOk={() => {
-        const rules = conditionStyle.rules.filter(rule => rule.condition);
-        const next = { ...conditionalStyles };
-        if (rules.length) next[conditionStyle.key] = { rules, otherwise: conditionStyle.otherwise };
-        else delete next[conditionStyle.key];
-        patch(KIT_CONDITION_STYLES, next);
-        setConditionStyle(null);
-      }}>
-      {conditionStyle.rules.map((rule, index) => {
-        const items = conditions.map(item => ({ label: item.name, value: item.id }));
-        if (rule.condition && !items.some(item => item.value === rule.condition))
-          items.push({ label: `未找到数据条件（${rule.condition}）`, value: rule.condition });
-        const update = (patch: Partial<typeof rule>) => setConditionStyle({ ...conditionStyle,
-          rules: conditionStyle.rules.map((item, at) => at === index ? { ...item, ...patch } : item) });
-        return <div key={index} className="kit-condition-rule">
-          <Select size="small" filter aria-label={`数据条件${index + 1}`}
-            value={rule.condition} placeholder="选择数据条件" optionList={items}
-            onChange={value => update({ condition: String(value ?? "") })}/>
-          <KitOptionValue value={rule.value} label={`条件${index + 1}样式`} optionKey={conditionStyle.key}
-            definition={conditionStyle.definition} widgetType={meta.source.type} onChange={value => update({ value })}/>
-          <Button size="small" theme="borderless" icon={<Trash2 size={12}/>} aria-label={`删除条件样式${index + 1}`}
-            onClick={() => setConditionStyle({ ...conditionStyle, rules: conditionStyle.rules.filter((_, at) => at !== index) })}/>
-        </div>;
-      })}
-      <Button size="small" theme="borderless" icon={<Plus size={12}/>} disabled={conditions.length === 0}
-        onClick={() => setConditionStyle({ ...conditionStyle,
-          rules: [...conditionStyle.rules, { condition: "", value: conditionStyle.base }] })}>添加条件样式</Button>
-      {conditions.length === 0 && <p className="properties-note">请在「数据 → 数据条件」中创建条件。</p>}
-      <Field label="当条件均不满足时"><KitOptionValue value={conditionStyle.otherwise} label="默认样式"
-        definition={conditionStyle.definition} optionKey={conditionStyle.key} widgetType={meta.source.type}
-        onChange={otherwise => setConditionStyle({ ...conditionStyle, otherwise })}/></Field>
-    </Modal>}
+    {codeExample && <Dialog open onOpenChange={next => !next && setCodeExample("")}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>调用代码示例</DialogTitle></DialogHeader>
+        <Textarea aria-label="调用代码示例" readOnly value={codeExample} rows={5} className="min-h-0 font-mono text-xs"/>
+      </DialogContent>
+    </Dialog>}
+    {conditionStyle && <Dialog open onOpenChange={next => !next && setConditionStyle(null)}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>{conditionStyle.definition.label} · 条件样式</DialogTitle></DialogHeader>
+        {conditionStyle.rules.map((rule, index) => {
+          const items = conditions.map(item => ({ label: item.name, value: item.id }));
+          if (rule.condition && !items.some(item => item.value === rule.condition))
+            items.push({ label: `未找到数据条件（${rule.condition}）`, value: rule.condition });
+          const update = (rulePatch: Partial<typeof rule>) => setConditionStyle({ ...conditionStyle,
+            rules: conditionStyle.rules.map((item, at) => at === index ? { ...item, ...rulePatch } : item) });
+          return <div key={index} className="kit-condition-rule">
+            <SelectField label={`数据条件${index + 1}`}
+              value={rule.condition} placeholder="选择数据条件" options={items}
+              onChange={value => update({ condition: String(value ?? "") })}/>
+            <KitOptionValue value={rule.value} label={`条件${index + 1}样式`} optionKey={conditionStyle.key}
+              definition={conditionStyle.definition} widgetType={meta.source.type} onChange={value => update({ value })}/>
+            <Button size="sm" variant="ghost" aria-label={`删除条件样式${index + 1}`}
+              onClick={() => setConditionStyle({ ...conditionStyle, rules: conditionStyle.rules.filter((_, at) => at !== index) })}><DeleteTwo size={12}/></Button>
+          </div>;
+        })}
+        <Button size="sm" variant="ghost" disabled={conditions.length === 0}
+          onClick={() => setConditionStyle({ ...conditionStyle,
+            rules: [...conditionStyle.rules, { condition: "", value: conditionStyle.base }] })}><Plus size={12}/>添加条件样式</Button>
+        {conditions.length === 0 && <p className="properties-note">请在「数据 → 数据条件」中创建条件。</p>}
+        <Field label="当条件均不满足时"><KitOptionValue value={conditionStyle.otherwise} label="默认样式"
+          definition={conditionStyle.definition} optionKey={conditionStyle.key} widgetType={meta.source.type}
+          onChange={otherwise => setConditionStyle({ ...conditionStyle, otherwise })}/></Field>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setConditionStyle(null)}>取消</Button>
+          <Button onClick={() => {
+            const rules = conditionStyle.rules.filter(rule => rule.condition);
+            const next = { ...conditionalStyles };
+            if (rules.length) next[conditionStyle.key] = { rules, otherwise: conditionStyle.otherwise };
+            else delete next[conditionStyle.key];
+            patch(KIT_CONDITION_STYLES, next);
+            setConditionStyle(null);
+          }}>确定</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>}
     {section === "data" && options.filter === true && options["filter-condition"] === "data-condition"
       && typeof options["filter-condition-select"] === "string" && options["filter-condition-select"]
       && !(state.settings?.boardDataConditions ?? []).some(condition => condition.id === options["filter-condition-select"])
       ? <p className="properties-note">引用的数据条件未找到，可在“数据 → 数据条件”中重建后重新选择。</p> : null}
-    <Collapse key={`${node.id}-${query ? "search" : "normal"}-${showAll}`} expandIconPosition="left" className="properties-collapse"
-      defaultActiveKey={query || section === "data" ? [...sorted.map(([name]) => name), "动态数据字段"] : ["基本设置", "大小&位置"]}>
+    <Panels key={`${node.id}-${query ? "search" : "normal"}-${showAll}`} className="properties-collapse"
+      defaultKeys={query || section === "data" ? [...sorted.map(([name]) => name), "动态数据字段"] : ["基本设置", "大小&位置"]}>
       {section === "data" && (!query || "动态数据字段".includes(query)) &&
-        <Collapse.Panel key="动态数据字段" header="动态数据字段" itemKey="动态数据字段"><section className="property-section">
+        <Panel key="动态数据字段" header="动态数据字段" itemKey="动态数据字段"><section className="property-section">
           <KitRelatedFields options={options} widgetType={meta.source.type} fields={dataFields} disabled={node.locked}
             onChange={next => getSceneBridge().post({ type: "patchKitOptions", id: node.id, patch: next })}/>
-        </section></Collapse.Panel>}
-      {sorted.map(([group, fields]) => <Collapse.Panel key={group} header={group} itemKey={group}>
+        </section></Panel>}
+      {sorted.map(([group, fields]) => <Panel key={group} header={group} itemKey={group}>
         <section className="property-section">
           {group === "基本设置" && meta.source.type === KIT_WEATHER_TYPE && !query && !showAll ? <>
             {fields.filter(([key]) => !weatherIconFields.has(key) && !weatherInfoFields.has(key)).map(field)}
-            <Collapse className="properties-collapse chart-axis-subsections" expandIconPosition="left"
-              defaultActiveKey={["图标", "天气信息"]}>
-              <Collapse.Panel itemKey="图标" header="图标">
+            <Panels className="properties-collapse chart-axis-subsections" defaultKeys={["图标", "天气信息"]}>
+              <Panel itemKey="图标" header="图标">
                 {fields.filter(([key]) => weatherIconFields.has(key)).map(field)}
-              </Collapse.Panel>
-              <Collapse.Panel itemKey="天气信息" header="天气信息">
+              </Panel>
+              <Panel itemKey="天气信息" header="天气信息">
                 <div className="chart-label-tabs" role="tablist" aria-label="天气信息">
                   {weatherInfoTabs.map(([key, label]) =>
                     <button type="button" role="tab" key={key} aria-selected={weatherInfoTab === key}
@@ -916,8 +1031,8 @@ export default function KitProperties({ node, editStateId, section = "style" }:
                   hidden={weatherInfoTab !== key}>
                   {fields.filter(([fieldKey]) => (keys as readonly string[]).includes(fieldKey)).map(field)}
                 </div>)}
-              </Collapse.Panel>
-            </Collapse>
+              </Panel>
+            </Panels>
           </> : group === "样式设置" && meta.source.type === "widget.basic.button-v2" && !query && !showAll ? <>
             <div className="chart-label-tabs kit-button-state-tabs" role="tablist" aria-label="按钮样式状态">
               {([ ["default", "默认"], ["click", "点击时"], ["hover", "悬停时"], ["select", "选中后"] ] as const)
@@ -926,14 +1041,14 @@ export default function KitProperties({ node, editStateId, section = "style" }:
             </div>
             <div role="tabpanel">
               {buttonStyleTab !== "default" && fields.filter(([key]) => key === `show-${buttonStyleTab}`).map(field)}
-              <Collapse key={buttonStyleTab} className="properties-collapse chart-axis-subsections" expandIconPosition="left">
+              <Panels key={buttonStyleTab} className="properties-collapse chart-axis-subsections">
                 {(["文字样式", "文字发光", "边框样式", "背景样式",
                   ...(["click", "hover"].includes(buttonStyleTab) ? ["动画设置"] : [])])
-                  .map(name => <Collapse.Panel key={name} header={name} itemKey={name}>
+                  .map(name => <Panel key={name} header={name} itemKey={name}>
                     <section className="property-section">{fields.filter(([key]) => !key.startsWith("show-")
                       && buttonState(key) === buttonStyleTab && buttonSection(key) === name).map(field)}</section>
-                  </Collapse.Panel>)}
-              </Collapse>
+                  </Panel>)}
+              </Panels>
             </div>
           </> : group === "字体设置" && ["widget.basic.text", "widget.basic.paragraph"].includes(meta.source.type)
             && !query && !showAll ? <>
@@ -972,8 +1087,8 @@ export default function KitProperties({ node, editStateId, section = "style" }:
             </>}
           </> : fields.map(field)}
         </section>
-      </Collapse.Panel>)}
-    </Collapse>
+      </Panel>)}
+    </Panels>
     {!sorted.length && !(section === "data" && (!query || "动态数据字段".includes(query)))
       && <p className="properties-note">没有找到匹配的配置项</p>}
     {meta.source.type === "widget.3d.city-builder" && meta.source.pieces?.length

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useState } from "react";
-import { Toaster } from "./components/ui/sonner";
+import { Toaster } from "./components/ui/toast";
 import LoginPage from "./pages/LoginPage";
 import HomePage from "./pages/HomePage";
 import WorkspacePage from "./pages/WorkspacePage";
@@ -53,8 +53,8 @@ export default function App() {
             <HomePage />
           )
         ) : <HomePage />}
-      {/* 全局 toast（原 Semi Toast/Notification 统一入口） */}
-      <Toaster position="top-center" offset={48} />
+      {/* 全局 toast（原 Semi Toast/Notification 统一入口，Base UI toast manager） */}
+      <Toaster />
     </>
   );
 }

@@ -13,8 +13,8 @@
 | `InputNumber` | `@/components/ui-ext/number-input` `NumberInput` | **props 与 Semi 相同**（value/onChange(number\|string)/min/max/step/precision/suffix/size="small"/hideButtons/disabled/aria-label），调用方 `typeof v==="number"` 守卫照旧 |
 | `Select` | `@/components/ui/select` | 受控：`<Select value={v} onValueChange={(val)=>set(val)}><SelectTrigger className="w-full" size="sm"/><SelectValue/><SelectContent><SelectItem value="x">…</SelectItem></SelectContent></Select>`。Semi `optionList={arr}` → 手写 SelectItem 列表；`showClear` → 加个清除小按钮或省略；多选 multiple → 见"多选"节 |
 | `Modal` | `@/components/ui/dialog` | `<Dialog open onOpenChange={(o)=>!o&&close()}><DialogContent className="max-w-…"><DialogHeader><DialogTitle>…</DialogTitle></DialogHeader>…<DialogFooter><Button onClick={close}>取消</Button>…</DialogFooter></DialogContent></Dialog>`；确认型危险操作用 `alert-dialog` |
-| `Toast` | `@/lib/toast` 的 `Toast` | **签名与 Semi 完全相同**（`Toast.error("msg")` / `Toast.error({content, duration:2})`），只改 import。测试里 `vi.mock("@douyinfe/semi-ui")` 的改为 mock `@/lib/toast` |
-| `Notification` | `@/lib/toast` 的 `Notification` | `Notification.open({id, content, duration})` / `Notification.close(id)` 签名相同（常驻提示 duration 默认 Infinity） |
+| `Toast` | `@/lib/toast` 的 `Toast` | **签名与 Semi 完全相同**（`Toast.error("msg")` / `Toast.error({content, duration:2})`），只改 import。底层是 shadcn(Base UI) toast manager（skill 规范：Base 项目用 toast 组件，不用 sonner）。测试里 `vi.mock("@douyinfe/semi-ui")` 的改为 mock `@/lib/toast` |
+| `Notification` | `@/lib/toast` 的 `Notification` | `Notification.open({id, content, duration})` / `Notification.close(id)` 签名相同（duration 缺省或 0 = 常驻） |
 | `Switch` | `@/components/ui/switch` | `checked` + `onCheckedChange(checked:boolean)`；`size="small"` 用 `className="scale-90"` 或默认尺寸 |
 | `Checkbox` | `@/components/ui/checkbox` | `checked` + `onCheckedChange(checked:boolean|'indeterminate')`，一般接 `(v)=>set(v===true)` |
 | `Radio/RadioGroup` | `@/components/ui/radio-group` | `<RadioGroup value onValueChange className="flex gap-3"><Radio value="a"/>…` 或 `<label className="flex items-center gap-1.5"><Radio/><span>文字</span></label>` |
@@ -27,7 +27,9 @@
 | `Tag` | `@/components/ui/badge` | variant 按语义 default/secondary/destructive/outline；色彩微调用 className |
 | `Table` (SemiTable) | `@/components/ui/table` | 只用 Table/TableHeader/TableBody/TableRow/TableHead/TableCell 手写；分页等 Semi 功能手工实现或省略 |
 | `Skeleton` | `@/components/ui/skeleton` | `<Skeleton className="h-… w-…"/>` 替代 `<Skeleton.Image/Placeholder>` |
-| `Empty` | `@/components/ui-ext/empty` | 只用 description |
+| `Empty` | `@/components/ui-ext/empty` | 只用 description（内部包装官方 ui/empty 组合件，skill 规范：空态用 Empty 组件不自绘） |
+| `RadioGroup type="button"`（分段按钮组） | `@/components/ui/toggle-group` | `<ToggleGroup variant="outline" type="single" value onValueChange><ToggleGroupItem value="a">…</ToggleGroupItem>…`；普通单选（圆点 radio）仍用 RadioGroup |
+| 输入框内嵌按钮/清除/图标 | `@/components/ui/input-group` | `InputGroup + InputGroupInput/InputGroupTextarea + InputGroupAddon`，不要手写 relative+absolute 包裹 |
 | `Avatar` | `@/components/ui/avatar` | |
 | `Layout`/`Nav` | 原生 div + tailwind | Layout/Nav 在本项目只是布局壳，直接换语义化 div（`<aside>`/`<nav>`/`<header>`），类名沿用原有 |
 | `Tree` (LeftPanel 场景树) | 自实现 | 不引第三方；用递归 div + Collapsible/chevron 实现，保留 drag-reparent（HTML5 DnD）与右键 |
@@ -44,3 +46,4 @@
 5. **不要**引任何新第三方依赖；图标继续用 @icon-park/react，不用 lucide（lucide 仅限 ui/ 内部）。
 6. **import 路径**：ui 组件 `@/components/ui/xxx`；扩展组件 `@/components/ui-ext/xxx`；toast shim `@/lib/toast`。
 7. `cn()` 从 `"cn"` 包 import（utils.ts 已 re-export），与 ui/ 内部一致。
+8. **Skill 硬规则**（.agents/skills/shadcn）：Dialog/AlertDialog 必须有 Title（可 sr-only）；`space-x/space-y` 一律改 `flex gap-*`；宽高相等用 `size-*`；浮层组件不手写 z-index；Button 内图标用 `data-icon="inline-start|inline-end"` 且不加 size 类；选项 2–7 个的切换组用 ToggleGroup 不手写选中态循环。

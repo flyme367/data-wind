@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Button, Input, InputNumber, Modal, Select, Switch, TextArea, Toast } from "@douyinfe/semi-ui";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { NumberInput } from "@/components/ui-ext/number-input";
+import { Toast } from "@/lib/toast";
 import { DATA_FILTER_OPS, DEFAULT_SOCKET_EVENT, DEFAULT_SOCKET_PATH, MAX_DATA_BYTES, defaultDataSource, parseDataFile, validateDataSource, type DataFilterOp, type DataSourceConfig, type DataSourceKind } from "../data/dataSources";
 import { excelSheetData, readExcelWorkbook, type ExcelSheet } from "../data/excelData";
 import { getState, useStore } from "../state/store";
@@ -15,6 +22,9 @@ import { kitMetadata, mergeKitStaticData } from "../data/kitRuntime";
 
 type DraftKind = DataSourceKind | "static" | "shared";
 interface ImportTarget { projectId: string | null; nodeId: string; data: string; source: string; }
+const kindOptions = [ { value: "static", label: "静态数据 / 文件" }, { value: "shared", label: "看板公共数据" }, { value: "api", label: "API 接口" },
+  { value: "websocket", label: "WebSocket" }, { value: "socketio", label: "Socket.IO" }, { value: "message", label: "PostMessage" },
+  { value: "database", label: "MySQL / PostgreSQL" }, { value: "webhook", label: "Webhook 推送" } ];
 
 export default function DataSourceEditor({ node }: { node: SceneNode }) {
   const state = useStore(), fileRef = useRef<HTMLInputElement>(null);
@@ -120,70 +130,90 @@ export default function DataSourceEditor({ node }: { node: SceneNode }) {
     } catch (exception) { Toast.error(exception instanceof Error ? exception.message : "工作表数据无效"); }
   };
   const status = state.dataStatus[node.id];
+  const sharedOptions = state.settings.boardSharedData.filter((item) => item.enabled).map((item) => ({ value: item.id, label: item.name }));
+  const opOptions = DATA_FILTER_OPS.map((op) => ({ value: op, label: op }));
+  const methodOptions = [ { value: "GET", label: "GET" }, { value: "POST", label: "POST" } ];
+  const sheetOptions = (workbook?.sheets ?? []).map((sheet, index) => ({ value: String(index), label: sheet.sheet }));
   return <div className="data-source-editor">
     <h4>数据连接</h4>
-    <Field label="来源类型"><Select size="small" aria-label="来源类型" value={kind} disabled={node.locked}
-      optionList={[{ value: "static", label: "静态数据 / 文件" }, { value: "shared", label: "看板公共数据" }, { value: "api", label: "API 接口" }, { value: "websocket", label: "WebSocket" }, { value: "socketio", label: "Socket.IO" }, { value: "message", label: "PostMessage" }, { value: "database", label: "MySQL / PostgreSQL" }, { value: "webhook", label: "Webhook 推送" }]}
-      onChange={(value) => { const next = value as DraftKind; if ((next === "database" || next === "webhook") && kind !== next) update({ url: DEFAULT_DB_GATEWAY }); setKind(next); setError(""); }}/></Field>
+    <Field label="来源类型"><Select items={kindOptions} value={kind} disabled={node.locked}
+      onValueChange={(value) => { const next = value as DraftKind; if ((next === "database" || next === "webhook") && kind !== next) update({ url: DEFAULT_DB_GATEWAY }); setKind(next); setError(""); }}>
+      <SelectTrigger className="w-full" size="sm" aria-label="来源类型"><SelectValue/></SelectTrigger>
+      <SelectContent>{kindOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
+    </Select></Field>
     {kind === "shared" && <>
-      <Field label="公共数据源"><Select size="small" aria-label="公共数据源" value={sharedId} disabled={node.locked}
-        placeholder="选择看板公共数据" optionList={state.settings.boardSharedData.filter((item) => item.enabled).map((item) => ({ value: item.id, label: item.name }))}
-        onChange={(value) => setSharedId(String(value))}/></Field>
+      <Field label="公共数据源"><Select items={sharedOptions} value={sharedId || null} disabled={node.locked} onValueChange={(value) => setSharedId(String(value))}>
+        <SelectTrigger className="w-full" size="sm" aria-label="公共数据源"><SelectValue placeholder="选择看板公共数据"/></SelectTrigger>
+        <SelectContent>{sharedOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
+      </Select></Field>
       <p className="properties-note">组件将读取公共数据源的实时值，并按下方数据绑定字段映射到组件属性。</p>
     </>}
     {kind !== "static" && kind !== "shared" && <>
-      <Field label="启用连接"><Switch size="small" aria-label="启用数据连接" checked={draft.enabled} disabled={node.locked} onChange={(enabled) => update({ enabled })}/></Field>
-      {kind !== "database" && kind !== "webhook" && <><Field label={kind === "message" ? "允许的来源" : "连接地址"}><Input size="small" aria-label="数据连接地址" value={draft.url} disabled={node.locked}
-        placeholder={kind === "websocket" ? "wss://…" : "https://example.com"} onChange={(url) => update({ url })}/></Field>
-      <Field label="响应路径"><Input size="small" aria-label="响应路径" value={draft.path} disabled={node.locked} placeholder="留空使用完整数据" onChange={(path) => update({ path })}/></Field></>}
+      <Field label="启用连接"><Switch size="sm" aria-label="启用数据连接" checked={draft.enabled} disabled={node.locked} onCheckedChange={(enabled) => update({ enabled })}/></Field>
+      {kind !== "database" && kind !== "webhook" && <><Field label={kind === "message" ? "允许的来源" : "连接地址"}><Input className="h-7 text-xs" aria-label="数据连接地址" value={draft.url} disabled={node.locked}
+        placeholder={kind === "websocket" ? "wss://…" : "https://example.com"} onChange={(event) => update({ url: event.target.value })}/></Field>
+      <Field label="响应路径"><Input className="h-7 text-xs" aria-label="响应路径" value={draft.path} disabled={node.locked} placeholder="留空使用完整数据" onChange={(event) => update({ path: event.target.value })}/></Field></>}
       {kind === "database" && <><DatabaseSourceFields source={draft} disabled={node.locked} onChange={update}/>
-        <Field label="轮询间隔"><InputNumber size="small" aria-label="数据库轮询间隔" min={0} max={3600000} step={1000} suffix="ms" value={draft.intervalMs} disabled={node.locked} onChange={(intervalMs) => { if (typeof intervalMs === "number") update({ intervalMs }); }}/></Field></>}
+        <Field label="轮询间隔"><NumberInput size="small" aria-label="数据库轮询间隔" min={0} max={3600000} step={1000} suffix="ms" value={draft.intervalMs} disabled={node.locked} onChange={(intervalMs) => { if (typeof intervalMs === "number") update({ intervalMs }); }}/></Field></>}
       {kind === "webhook" && <WebhookSourceFields source={draft} disabled={node.locked} onChange={update}/>}
       {/* 山海鲸「数据条件」：对归一化后的 rows 按字段过滤；三联编辑行独立成块（标签行 + 全宽行） */}
       <Field label="数据条件"/>
       <div className="data-filter-row">
-        <Input size="small" aria-label="条件字段" placeholder="字段，如 name" value={draft.filter?.field ?? ""} disabled={node.locked}
-          onChange={(field) => update({ filter: field.trim() ? { field, op: draft.filter?.op ?? "==", value: draft.filter?.value ?? "" } : undefined })}/>
-        <Select size="small" className="data-filter-op" aria-label="条件操作符" value={draft.filter?.op ?? "=="}
-          disabled={node.locked || !draft.filter?.field}
-          optionList={DATA_FILTER_OPS.map((op) => ({ value: op, label: op }))}
-          onChange={(op) => draft.filter && update({ filter: { ...draft.filter, op: op as DataFilterOp } })}/>
-        <Input size="small" aria-label="条件值" placeholder="比较值" value={draft.filter?.value ?? ""} disabled={node.locked || !draft.filter?.field}
-          onChange={(value) => draft.filter && update({ filter: { ...draft.filter, value } })}/>
+        <Input className="h-7 text-xs" aria-label="条件字段" placeholder="字段，如 name" value={draft.filter?.field ?? ""} disabled={node.locked}
+          onChange={(event) => { const field = event.target.value; update({ filter: field.trim() ? { field, op: draft.filter?.op ?? "==", value: draft.filter?.value ?? "" } : undefined }); }}/>
+        <Select items={opOptions} value={draft.filter?.op ?? "=="} disabled={node.locked || !draft.filter?.field}
+          onValueChange={(op) => draft.filter && update({ filter: { ...draft.filter, op: op as DataFilterOp } })}>
+          <SelectTrigger className="data-filter-op w-full" size="sm" aria-label="条件操作符"><SelectValue/></SelectTrigger>
+          <SelectContent>{opOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
+        </Select>
+        <Input className="h-7 text-xs" aria-label="条件值" placeholder="比较值" value={draft.filter?.value ?? ""} disabled={node.locked || !draft.filter?.field}
+          onChange={(event) => draft.filter && update({ filter: { ...draft.filter, value: event.target.value } })}/>
       </div>
       {kind === "api" && <>
-        <Field label="请求方式"><Select size="small" aria-label="请求方式" value={draft.method} disabled={node.locked} optionList={[{ value: "GET", label: "GET" }, { value: "POST", label: "POST" }]} onChange={(method) => update({ method: method as "GET" | "POST" })}/></Field>
+        <Field label="请求方式"><Select items={methodOptions} value={draft.method} disabled={node.locked} onValueChange={(method) => update({ method: method as "GET" | "POST" })}>
+          <SelectTrigger className="w-full" size="sm" aria-label="请求方式"><SelectValue/></SelectTrigger>
+          <SelectContent>{methodOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
+        </Select></Field>
         <ApiRequestOptions source={draft} disabled={node.locked} onChange={update}/>
-        <Field label="轮询间隔"><InputNumber size="small" aria-label="轮询间隔毫秒" min={0} max={3600000} step={1000} suffix="ms" value={draft.intervalMs} disabled={node.locked} onChange={(intervalMs) => { if (typeof intervalMs === "number") update({ intervalMs }); }}/></Field>
+        <Field label="轮询间隔"><NumberInput size="small" aria-label="轮询间隔毫秒" min={0} max={3600000} step={1000} suffix="ms" value={draft.intervalMs} disabled={node.locked} onChange={(intervalMs) => { if (typeof intervalMs === "number") update({ intervalMs }); }}/></Field>
         <p className="properties-note">0 表示只请求一次；轮询至少间隔 1000 ms。POST 轮询可能触发服务端操作。</p>
         <label className="data-source-label" htmlFor={`headers-${node.id}`}>请求头 JSON</label>
-        <TextArea id={`headers-${node.id}`} aria-label="请求头 JSON" rows={3} value={headers} disabled={node.locked} onChange={setHeaders} spellCheck={false}/>
-        {draft.method === "POST" && <><label className="data-source-label" htmlFor={`body-${node.id}`}>请求体</label><TextArea id={`body-${node.id}`} aria-label="请求体" rows={3} value={draft.body} disabled={node.locked} onChange={(body) => update({ body })}/></>}
+        <Textarea id={`headers-${node.id}`} aria-label="请求头 JSON" rows={3} value={headers} disabled={node.locked} onChange={(event) => setHeaders(event.target.value)} spellCheck={false}/>
+        {draft.method === "POST" && <><label className="data-source-label" htmlFor={`body-${node.id}`}>请求体</label><Textarea id={`body-${node.id}`} aria-label="请求体" rows={3} value={draft.body} disabled={node.locked} onChange={(event) => update({ body: event.target.value })}/></>}
         <p className="properties-note">浏览器跨域规则适用，不自动携带 Cookie。地址、请求头和请求体会随项目及发布文件保存。</p>
       </>}
       {kind === "websocket" && <p className="properties-note">支持原生 WebSocket JSON 文本消息；Socket.io 使用不同协议。</p>}
       {kind === "socketio" && <>
-        <Field label="事件名称"><Input size="small" aria-label="Socket.IO 事件名称" value={draft.socketEvent ?? DEFAULT_SOCKET_EVENT} disabled={node.locked} onChange={(socketEvent) => update({ socketEvent })}/></Field>
-        <Field label="传输路径"><Input size="small" aria-label="Socket.IO 传输路径" value={draft.socketPath ?? DEFAULT_SOCKET_PATH} disabled={node.locked} onChange={(socketPath) => update({ socketPath })}/></Field>
+        <Field label="事件名称"><Input className="h-7 text-xs" aria-label="Socket.IO 事件名称" value={draft.socketEvent ?? DEFAULT_SOCKET_EVENT} disabled={node.locked} onChange={(event) => update({ socketEvent: event.target.value })}/></Field>
+        <Field label="传输路径"><Input className="h-7 text-xs" aria-label="Socket.IO 传输路径" value={draft.socketPath ?? DEFAULT_SOCKET_PATH} disabled={node.locked} onChange={(event) => update({ socketPath: event.target.value })}/></Field>
         <label className="data-source-label" htmlFor={`socket-auth-${node.id}`}>认证信息 JSON</label>
-        <TextArea id={`socket-auth-${node.id}`} aria-label="Socket.IO 认证信息 JSON" rows={3} value={socketAuth} disabled={node.locked} onChange={setSocketAuth} spellCheck={false}/>
+        <Textarea id={`socket-auth-${node.id}`} aria-label="Socket.IO 认证信息 JSON" rows={3} value={socketAuth} disabled={node.locked} onChange={(event) => setSocketAuth(event.target.value)} spellCheck={false}/>
         <p className="properties-note">地址中的路径表示命名空间；传输路径需与服务端一致。接收事件的第一个 JSON 参数；网络断线会自动重连，服务端主动断开需手动刷新。认证信息会随项目及发布文件保存。</p>
       </>}
       {kind === "message" && <p className="properties-note">只接收来自指定来源的 JSON 消息；请填写完整来源，例如 https://example.com。</p>}
     </>}
     {error && <div className="field-error" role="alert">{error}</div>}
-    <Button block size="small" theme="solid" disabled={node.locked} onClick={apply}>{kind === "static" ? "使用静态数据" : "应用连接"}</Button>
-    {node.dataSource?.enabled && <><Button block size="small" onClick={() => window.dispatchEvent(new CustomEvent("dw:refresh-data", { detail: { id: node.id } }))}>立即刷新</Button>
+    <Button className="w-full" size="sm" disabled={node.locked} onClick={apply}>{kind === "static" ? "使用静态数据" : "应用连接"}</Button>
+    {node.dataSource?.enabled && <><Button className="w-full" size="sm" onClick={() => window.dispatchEvent(new CustomEvent("dw:refresh-data", { detail: { id: node.id } }))}>立即刷新</Button>
       <p className={`data-source-status ${status?.state ?? "connecting"}`} role="status">{status?.state === "error" ? "连接错误" : status?.state === "connected" ? "已连接" : "正在连接"}{status?.message ? `：${status.message}` : ""}{status?.updatedAt ? ` · ${new Date(status.updatedAt).toLocaleTimeString()}` : ""}</p></>}
-    <Button block size="small" disabled={node.locked || importing} onClick={() => fileRef.current?.click()}>{importing ? "正在读取文件…" : "导入 JSON / CSV / XLSX 文件"}</Button>
+    <Button className="w-full" size="sm" disabled={node.locked || importing} onClick={() => fileRef.current?.click()}>{importing ? "正在读取文件…" : "导入 JSON / CSV / XLSX 文件"}</Button>
     <input ref={fileRef} hidden type="file" accept=".json,.csv,.xlsx,application/json,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void importFile(file); }}/>
     <p className="properties-note">XLSX 首行作为表头，最多 5000 行、256 列；文件不超过 1 MB。</p>
-    <Modal title="选择 Excel 工作表" visible={Boolean(workbook)} onCancel={() => setWorkbook(null)} onOk={importSheet} okText="导入" cancelText="取消" width={440}>
-      <Field label="工作表"><Select size="small" aria-label="Excel 工作表" value={String(sheetIndex)}
-        optionList={(workbook?.sheets ?? []).map((sheet, index) => ({ value: String(index), label: sheet.sheet }))}
-        onChange={(value) => { selectedSheetIndex.current = Number(value); setSheetIndex(selectedSheetIndex.current); }} /></Field>
-      <p className="properties-note">使用第一行作为表头，最多导入 5000 行；日期保存为 ISO 时间字符串。</p>
-    </Modal>
+    <Dialog open={Boolean(workbook)} onOpenChange={(open) => { if (!open) setWorkbook(null); }}>
+      <DialogContent className="sm:max-w-[440px]">
+        <DialogHeader><DialogTitle>选择 Excel 工作表</DialogTitle></DialogHeader>
+        <Field label="工作表"><Select items={sheetOptions} value={String(sheetIndex)} disabled={!workbook}
+          onValueChange={(value) => { selectedSheetIndex.current = Number(value); setSheetIndex(selectedSheetIndex.current); }}>
+          <SelectTrigger className="w-full" size="sm" aria-label="Excel 工作表"><SelectValue/></SelectTrigger>
+          <SelectContent>{sheetOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
+        </Select></Field>
+        <p className="properties-note">使用第一行作为表头，最多导入 5000 行；日期保存为 ISO 时间字符串。</p>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setWorkbook(null)}>取消</Button>
+          <Button onClick={importSheet}>导入</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     {state.liveData[node.id] && <details className="data-source-preview"><summary>查看最新数据</summary><pre>{JSON.stringify(state.liveData[node.id], null, 2)}</pre></details>}
   </div>;
 }

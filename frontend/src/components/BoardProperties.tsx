@@ -1,5 +1,15 @@
-import { Button, Collapse, Dropdown, Input, InputNumber, Modal, RadioGroup, Select, Slider, Switch, Toast, Upload } from "@douyinfe/semi-ui";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Switch } from "./ui/switch";
+import { Slider } from "./ui/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
+import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
+import { NumberInput } from "./ui-ext/number-input";
+import { Toast } from "../lib/toast";
 import { captureBoardCover } from "../engine/exportBoard";
 import { BACKGROUND_BOARD_PAGE_ID, defaultEditorSettings, type BoardStateStyle, type EditorSettings } from "../data/editor";
 import { saveBoardMedia } from "../state/boardMedia";
@@ -7,6 +17,21 @@ import { downloadFile, loadProjects, saveProjects } from "../state/projects";
 import { setState, useStore } from "../state/store";
 import { getSceneBridge } from "../workers/bridge";
 import { ColorField, Field } from "./PropertyFields";
+import { Down } from "@icon-park/react";
+import { cn } from "cn";
+
+/** Semi Collapse.Panel → Collapsible：右侧 extra 控件钉在 header 行最右（沿用 board-collapse-* 类名与点击拦截）。 */
+function Panel({ itemKey, muted, header, children, defaultOpen = false }: {
+  itemKey: string; muted?: boolean; header: React.ReactNode; children?: React.ReactNode; defaultOpen?: boolean;
+}) {
+  return <Collapsible defaultOpen={defaultOpen} data-panel={itemKey} className="board-properties-collapse">
+    <CollapsibleTrigger className="flex min-h-[34px] w-full cursor-pointer items-center gap-1.5 px-3 py-2 text-left text-xs font-normal text-[#cecece] hover:text-foreground">
+      <Down size={12} className="shrink-0 transition-transform data-[panel-open]:rotate-0" />
+      <span className={cn("board-collapse-header", muted && "is-muted")}>{header}</span>
+    </CollapsibleTrigger>
+    <CollapsibleContent><section className="property-section">{children}</section></CollapsibleContent>
+  </Collapsible>;
+}
 
 export default function BoardProperties() {
   const state = useStore();
@@ -60,18 +85,17 @@ export default function BoardProperties() {
     // A prior ID may still be used by another named state or board page.
     Toast.success(kind === "background" ? "背景媒体已添加" : "背景音乐已添加");
   };
-  const upload = (kind: "background" | "music") => ({
-    action: "",
-    accept: kind === "background" ? "image/*,video/*" : "audio/*",
-    uploadTrigger: "custom" as const,
-    showUploadList: false,
-    customRequest: ({ fileInstance, onSuccess, onError }: { fileInstance: File; onSuccess: (value: unknown) => void; onError: (xhr: { status?: number }, error?: Event) => void }) => {
-      void saveUpload(fileInstance, kind).then(() => onSuccess({})).catch((exception: unknown) => {
-        Toast.error(exception instanceof Error ? exception.message : "文件读取失败");
-        onError({ status: 400 }, new Event("error"));
-      });
-    },
-  });
+  // Semi Upload → 隐藏 input[type=file] + 按钮触发（accept 与校验逻辑原样保留）
+  const backgroundInput = useRef<HTMLInputElement>(null);
+  const musicInput = useRef<HTMLInputElement>(null);
+  const onPick = (kind: "background" | "music") => (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    void saveUpload(file, kind).catch((exception: unknown) => {
+      Toast.error(exception instanceof Error ? exception.message : "文件读取失败");
+    });
+  };
 
   const captureCover = async () => {
     try {
@@ -124,84 +148,100 @@ export default function BoardProperties() {
       saveProjects(loadProjects().map((project) => project.id === state.projectId ? { ...project, thumbnail: undefined } : project));
   };
 
-  return <Collapse expandIconPosition="left" className="properties-collapse board-properties-collapse" defaultActiveKey={["basic", "background"]}>
-    {/* Semi Collapse 只在 header 为纯字符串时渲染 extra（JSX header 会被丢弃），右侧控件统一放进 header 内部 margin-left:auto 钉在最右 */}
-    <Collapse.Panel itemKey="basic" header={<span className="board-collapse-header"><span className="board-collapse-header-title">基本设置</span>
+  return <>
+    <Panel itemKey="basic" defaultOpen header={<span className="board-collapse-header"><span className="board-collapse-header-title">基本设置</span>
       <span className="board-collapse-extra" onClick={(event) => event.stopPropagation()}><SectionMenu name="基本设置" value={{ size: state.boardSize, boardFit: pageSettings.boardFit,
         boardFillColor: pageSettings.boardFillColor, boardLayout: settings.boardLayout, boardOutline: settings.boardOutline }} onReset={resetBasic}
-        boardOutline={settings.boardOutline} onToggleOutline={() => update({ boardOutline: !settings.boardOutline })}/></span></span>}><section className="property-section">
-      <Field label="子看板尺寸"><div className="board-size-inputs">{(["width", "height"] as const).map((axis) => <InputNumber key={axis} size="small" hideButtons min={100} max={8192} value={state.boardSize[axis]} suffix="px" aria-label={axis === "width" ? "看板宽度" : "看板高度"} onChange={(value) => typeof value === "number" && value >= 100 && value <= 8192 && setState({ boardSize: { ...state.boardSize, [axis]: value } })}/>)}</div></Field>
+        boardOutline={settings.boardOutline} onToggleOutline={() => update({ boardOutline: !settings.boardOutline })}/></span></span>}>
+      <Field label="子看板尺寸"><div className="board-size-inputs">{(["width", "height"] as const).map((axis) => <NumberInput key={axis} size="small" min={100} max={8192} value={state.boardSize[axis]} suffix="px" aria-label={axis === "width" ? "看板宽度" : "看板高度"} onChange={(value) => typeof value === "number" && value >= 100 && value <= 8192 && setState({ boardSize: { ...state.boardSize, [axis]: value } })}/>)}</div></Field>
       <Field label="全屏显示模式"><SelectMode value={pageSettings.boardFit} onChange={(boardFit) => update({ boardFit: boardFit as EditorSettings["boardFit"] })}/></Field>
       <ColorField label="填充颜色" value={pageSettings.boardFillColor} onChange={(boardFillColor) => update({ boardFillColor })}/>
-      <Field label="内部组件布局"><RadioGroup type="button" buttonSize="small" className="board-segment-radio" value={settings.boardLayout} aria-label="内部组件布局"
-        options={[{ value: "static", label: "静态布局" }, { value: "flow", label: "流式布局" }]}
-        onChange={(event) => {
-          const mode = String(event.target.value) as EditorSettings["boardLayout"];
+      <Field label="内部组件布局"><ToggleGroup className="board-segment-radio" value={settings.boardLayout ? [settings.boardLayout] : []} aria-label="内部组件布局"
+        onValueChange={(values) => {
+          const mode = values[0] as EditorSettings["boardLayout"] | undefined;
+          if (!mode) return;
           update({ boardLayout: mode });
           if (mode === "flow") { getSceneBridge().post({ type: "flowLayout", board: state.boardSize,
             boardPageId: isBackgroundBoard ? BACKGROUND_BOARD_PAGE_ID : settings.boardActivePageId }); Toast.success("已按行列流式整理当前看板组件，可撤销"); }
-        }}/></Field>
-    </section></Collapse.Panel>
+        }}>
+        <ToggleGroupItem className="h-7 text-xs" value="static">静态布局</ToggleGroupItem>
+        <ToggleGroupItem className="h-7 text-xs" value="flow">流式布局</ToggleGroupItem>
+      </ToggleGroup></Field>
+    </Panel>
 
-    {!isBackgroundBoard && <Collapse.Panel itemKey="carousel"
-      header={<span className={"board-collapse-header" + (!settings.boardCarouselEnabled || settings.boardPages.length < 2 ? " is-muted" : "")}><span className="board-collapse-header-title">子看板轮播</span>
-        <span className="board-collapse-extra" onClick={(event) => event.stopPropagation()}><span className="collapse-extra-switch"><Switch size="small" aria-label="启用子看板轮播" disabled={settings.boardPages.length < 2} checked={settings.boardCarouselEnabled && settings.boardPages.length > 1} onChange={(boardCarouselEnabled) => update({ boardCarouselEnabled })}/></span><SectionMenu name="子看板轮播" value={{ enabled: settings.boardCarouselEnabled,
+    {!isBackgroundBoard && <Panel itemKey="carousel" muted={!settings.boardCarouselEnabled || settings.boardPages.length < 2}
+      header={<span className="board-collapse-header"><span className="board-collapse-header-title">子看板轮播</span>
+        <span className="board-collapse-extra" onClick={(event) => event.stopPropagation()}><span className="collapse-extra-switch"><Switch aria-label="启用子看板轮播" disabled={settings.boardPages.length < 2} checked={settings.boardCarouselEnabled && settings.boardPages.length > 1} onCheckedChange={(boardCarouselEnabled) => update({ boardCarouselEnabled: boardCarouselEnabled === true })}/></span><SectionMenu name="子看板轮播" value={{ enabled: settings.boardCarouselEnabled,
           animation: settings.boardCarouselAnimation, duration: settings.boardCarouselDuration, pageDuration: settings.boardPageDuration }} onReset={resetCarousel}/></span></span>}>
-      <section className="property-section">
-        <Field label="轮播动画"><SelectMode disabled={!settings.boardCarouselEnabled || settings.boardPages.length < 2} value={settings.boardCarouselAnimation} options={[{ value: "none", label: "无动画" }, { value: "fade", label: "淡入淡出" }, { value: "slideX", label: "水平平移" }, { value: "slideY", label: "垂直平移" }]} onChange={(boardCarouselAnimation) => update({ boardCarouselAnimation: boardCarouselAnimation as EditorSettings["boardCarouselAnimation"] })}/></Field>
-        <Field label="动画持续时间"><InputNumber disabled={!settings.boardCarouselEnabled || settings.boardPages.length < 2} size="small" min={0.1} max={60} step={0.1} precision={1} suffix="秒" aria-label="动画持续时间" value={settings.boardCarouselDuration} onChange={(boardCarouselDuration) => typeof boardCarouselDuration === "number" && update({ boardCarouselDuration })}/></Field>
-        <Field label="页面停留时间"><InputNumber disabled={!settings.boardCarouselEnabled || settings.boardPages.length < 2} size="small" min={0.1} max={3600} step={0.5} precision={1} suffix="秒" aria-label="页面停留时间" value={settings.boardPageDuration} onChange={(boardPageDuration) => typeof boardPageDuration === "number" && update({ boardPageDuration })}/></Field>
-        <p className="properties-note">按页面停留时间自动切换子看板；当前共 {settings.boardPages.length} 页。{settings.boardPages.length < 2 ? "先用画布底部 + 添加页面后即可开启轮播。" : ""}</p>
-      </section>
-    </Collapse.Panel>}
+      <Field label="轮播动画"><SelectMode disabled={!settings.boardCarouselEnabled || settings.boardPages.length < 2} value={settings.boardCarouselAnimation} options={[{ value: "none", label: "无动画" }, { value: "fade", label: "淡入淡出" }, { value: "slideX", label: "水平平移" }, { value: "slideY", label: "垂直平移" }]} onChange={(boardCarouselAnimation) => update({ boardCarouselAnimation: boardCarouselAnimation as EditorSettings["boardCarouselAnimation"] })}/></Field>
+      <Field label="动画持续时间"><NumberInput disabled={!settings.boardCarouselEnabled || settings.boardPages.length < 2} size="small" min={0.1} max={60} step={0.1} precision={1} suffix="秒" aria-label="动画持续时间" value={settings.boardCarouselDuration} onChange={(boardCarouselDuration) => typeof boardCarouselDuration === "number" && update({ boardCarouselDuration })}/></Field>
+      <Field label="页面停留时间"><NumberInput disabled={!settings.boardCarouselEnabled || settings.boardPages.length < 2} size="small" min={0.1} max={3600} step={0.5} precision={1} suffix="秒" aria-label="页面停留时间" value={settings.boardPageDuration} onChange={(boardPageDuration) => typeof boardPageDuration === "number" && update({ boardPageDuration })}/></Field>
+      <p className="properties-note">按页面停留时间自动切换子看板；当前共 {settings.boardPages.length} 页。{settings.boardPages.length < 2 ? "先用画布底部 + 添加页面后即可开启轮播。" : ""}</p>
+    </Panel>}
 
-    <Collapse.Panel itemKey="background"
-      header={<span className={"board-collapse-header" + (!pageSettings.boardBackgroundEnabled ? " is-muted" : "")}><span className="board-collapse-header-title">背景设置</span>
-        <span className="board-collapse-extra" onClick={(event) => event.stopPropagation()}><span className="collapse-extra-switch"><Switch size="small" aria-label="启用背景设置" checked={pageSettings.boardBackgroundEnabled} onChange={(boardBackgroundEnabled) => update({ boardBackgroundEnabled })}/></span><SectionMenu name="背景设置" value={{ color: pageSettings.boardColor, enabled: pageSettings.boardBackgroundEnabled,
+    <Panel itemKey="background" defaultOpen muted={!pageSettings.boardBackgroundEnabled}
+      header={<span className="board-collapse-header"><span className="board-collapse-header-title">背景设置</span>
+        <span className="board-collapse-extra" onClick={(event) => event.stopPropagation()}><span className="collapse-extra-switch"><Switch aria-label="启用背景设置" checked={pageSettings.boardBackgroundEnabled} onCheckedChange={(boardBackgroundEnabled) => update({ boardBackgroundEnabled: boardBackgroundEnabled === true })}/></span><SectionMenu name="背景设置" value={{ color: pageSettings.boardColor, enabled: pageSettings.boardBackgroundEnabled,
           media: pageSettings.boardBackgroundMediaName, fill: pageSettings.boardBackgroundFill, blur: pageSettings.boardBackgroundBlur,
           music: pageSettings.boardMusicName, musicEnabled: pageSettings.boardMusicEnabled, volume: pageSettings.boardMusicVolume }} onReset={resetBackground}/></span></span>}>
-      <section className="property-section">
-        <ColorField label="背景颜色" value={pageSettings.boardColor} onChange={(boardColor) => update({ boardColor })}/>
-        <Field label="背景图/视频"><div className="board-media-field">
-          <Upload {...upload("background")}><Button size="small">{pageSettings.boardBackgroundMediaName || "点击选择文件"}</Button></Upload>
-          {pageSettings.boardBackgroundMediaId && <Button size="small" theme="borderless" aria-label="清除背景图或视频" onClick={() => update({ boardBackgroundMediaId: "", boardBackgroundMediaName: "" })}>清除</Button>}
+      <ColorField label="背景颜色" value={pageSettings.boardColor} onChange={(boardColor) => update({ boardColor })}/>
+      <Field label="背景图/视频"><div className="board-media-field">
+        <input hidden ref={backgroundInput} type="file" accept="image/*,video/*" aria-label="选择背景图或视频" onChange={onPick("background")} />
+        <Button size="sm" onClick={() => backgroundInput.current?.click()}>{pageSettings.boardBackgroundMediaName || "点击选择文件"}</Button>
+        {pageSettings.boardBackgroundMediaId && <Button size="sm" variant="ghost" aria-label="清除背景图或视频" onClick={() => update({ boardBackgroundMediaId: "", boardBackgroundMediaName: "" })}>清除</Button>}
+      </div></Field>
+      <Field label="填充方式"><ToggleGroup className="board-fill-radio board-segment-radio" value={pageSettings.boardBackgroundFill ? [pageSettings.boardBackgroundFill] : []} aria-label="背景填充方式"
+        onValueChange={(values) => { const fill = values[0]; if (typeof fill === "string") update({ boardBackgroundFill: fill as EditorSettings["boardBackgroundFill"] }); }}>
+        <ToggleGroupItem className="h-7 text-xs" value="stretch">拉伸</ToggleGroupItem>
+        <ToggleGroupItem className="h-7 text-xs" value="tile">平铺</ToggleGroupItem>
+        <ToggleGroupItem className="h-7 text-xs" value="none">不填充</ToggleGroupItem>
+      </ToggleGroup></Field>
+      <Field label="背景模糊"><NumberInput size="small" min={0} max={80} suffix="px" aria-label="背景模糊" value={pageSettings.boardBackgroundBlur} onChange={(boardBackgroundBlur) => typeof boardBackgroundBlur === "number" && update({ boardBackgroundBlur })}/></Field>
+      <div className="board-music-block">
+        <div className="board-music-title"><strong>背景音乐</strong><Switch aria-label="启用背景音乐" checked={pageSettings.boardMusicEnabled} onCheckedChange={(boardMusicEnabled) => update({ boardMusicEnabled: boardMusicEnabled === true })}/></div>
+        <Field label="音频文件"><div className="board-media-field">
+          <input hidden ref={musicInput} type="file" accept="audio/*" aria-label="选择背景音乐" onChange={onPick("music")} />
+          <Button size="sm" onClick={() => musicInput.current?.click()}>{pageSettings.boardMusicId.startsWith("http") ? "选择本地文件" : pageSettings.boardMusicName || "点击选择文件"}</Button>
+          {pageSettings.boardMusicId && <Button size="sm" variant="ghost" aria-label="清除背景音乐" onClick={() => update({ boardMusicId: "", boardMusicName: "", boardMusicEnabled: false })}>清除</Button>}
         </div></Field>
-        <Field label="填充方式"><RadioGroup type="button" buttonSize="small" className="board-fill-radio board-segment-radio" value={pageSettings.boardBackgroundFill} aria-label="背景填充方式"
-          options={[{ value: "stretch", label: "拉伸" }, { value: "tile", label: "平铺" }, { value: "none", label: "不填充" }]}
-          onChange={(event) => update({ boardBackgroundFill: String(event.target.value) as EditorSettings["boardBackgroundFill"] })}/></Field>
-        <Field label="背景模糊"><InputNumber size="small" min={0} max={80} suffix="px" aria-label="背景模糊" value={pageSettings.boardBackgroundBlur} onChange={(boardBackgroundBlur) => typeof boardBackgroundBlur === "number" && update({ boardBackgroundBlur })}/></Field>
-        <div className="board-music-block">
-          <div className="board-music-title"><strong>背景音乐</strong><Switch size="small" aria-label="启用背景音乐" checked={pageSettings.boardMusicEnabled} onChange={(boardMusicEnabled) => update({ boardMusicEnabled })}/></div>
-          <Field label="音频文件"><div className="board-media-field">
-            <Upload {...upload("music")}><Button size="small">{pageSettings.boardMusicId.startsWith("http") ? "选择本地文件" : pageSettings.boardMusicName || "点击选择文件"}</Button></Upload>
-            {pageSettings.boardMusicId && <Button size="small" theme="borderless" aria-label="清除背景音乐" onClick={() => update({ boardMusicId: "", boardMusicName: "", boardMusicEnabled: false })}>清除</Button>}
-          </div></Field>
-          <Field label="网络地址"><div className="board-media-field"><Input size="small" aria-label="背景音乐网络地址" value={musicUrlDraft} placeholder="https://example.com/music.mp3" onChange={setMusicUrlDraft} onEnterPress={applyMusicUrl}/><Button size="small" onClick={applyMusicUrl}>应用</Button></div></Field>
-          <Field label="音量"><Slider aria-label="背景音乐音量" min={0} max={100} value={pageSettings.boardMusicVolume} onChange={(value) => update({ boardMusicVolume: Array.isArray(value) ? Number(value[0]) : Number(value) })}/></Field>
-          {pageSettings.boardMusicId && <Button size="small" onClick={() => window.dispatchEvent(new Event("dw:toggle-board-music"))}>试听 / 暂停</Button>}
-          <p className="properties-note">背景音乐在预览时循环播放；浏览器可能要求先点击试听。</p>
-        </div>
-      </section>
-    </Collapse.Panel>
+        <Field label="网络地址"><div className="board-media-field"><Input className="h-7 text-xs" aria-label="背景音乐网络地址" value={musicUrlDraft} placeholder="https://example.com/music.mp3" onChange={(event) => setMusicUrlDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") applyMusicUrl(); }}/><Button size="sm" onClick={applyMusicUrl}>应用</Button></div></Field>
+        <Field label="音量"><Slider aria-label="背景音乐音量" min={0} max={100} value={pageSettings.boardMusicVolume} onValueChange={(value) => update({ boardMusicVolume: Number(Array.isArray(value) ? value[0] : value) })}/></Field>
+        {pageSettings.boardMusicId && <Button size="sm" onClick={() => window.dispatchEvent(new Event("dw:toggle-board-music"))}>试听 / 暂停</Button>}
+        <p className="properties-note">背景音乐在预览时循环播放；浏览器可能要求先点击试听。</p>
+      </div>
+    </Panel>
 
-    <Collapse.Panel itemKey="cover" header={<span className="board-collapse-header"><span className="board-collapse-header-title">封面设置</span>
-      <span className="board-collapse-extra" onClick={(event) => event.stopPropagation()}><SectionMenu name="封面设置" value={{ cover: Boolean(cover) }} onReset={resetCover}/></span></span>}><section className="property-section">
+    <Panel itemKey="cover" header={<span className="board-collapse-header"><span className="board-collapse-header-title">封面设置</span>
+      <span className="board-collapse-extra" onClick={(event) => event.stopPropagation()}><SectionMenu name="封面设置" value={{ cover: Boolean(cover) }} onReset={resetCover}/></span></span>}>
       {cover ? <img className="board-cover" src={cover} alt="子看板封面"/> : <p className="properties-note">暂无封面，点击「截屏」生成当前子看板封面。</p>}
-      <Button block size="small" onClick={() => void captureCover()}>截屏</Button>
-    </section></Collapse.Panel>
-  </Collapse>;
+      <Button className="w-full" size="sm" onClick={() => void captureCover()}>截屏</Button>
+    </Panel>
+  </>;
 }
 
 function SectionMenu({ name, value, onReset, boardOutline, onToggleOutline }: {
   name: string; value: unknown; onReset: () => void; boardOutline?: boolean; onToggleOutline?: () => void;
 }) {
+  const [confirming, setConfirming] = useState(false);
   return <span className="board-section-menu" onClick={(event) => event.stopPropagation()}>
-    <Dropdown trigger="click" position="bottomRight" render={<Dropdown.Menu>
-      <Dropdown.Item onClick={() => downloadFile(`${name}设置.json`, JSON.stringify(value, null, 2))}>导出本组设置 JSON</Dropdown.Item>
-      {onToggleOutline && <Dropdown.Item onClick={onToggleOutline}>{boardOutline ? "隐藏子看板轮廓" : "显示子看板轮廓"}</Dropdown.Item>}
-      <Dropdown.Item type="danger" onClick={() => Modal.confirm({ title: `恢复${name}默认值`, content: `将恢复「${name}」的默认设置。`,
-        okText: "恢复", cancelText: "取消", onOk: onReset })}>恢复默认值</Dropdown.Item>
-    </Dropdown.Menu>}><Button size="small" theme="borderless" aria-label={`${name}更多操作`}>⋮</Button></Dropdown>
+    <DropdownMenu>
+      <DropdownMenuTrigger render={<Button size="icon-sm" variant="ghost" aria-label={`${name}更多操作`}>⋮</Button>} />
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => downloadFile(`${name}设置.json`, JSON.stringify(value, null, 2))}>导出本组设置 JSON</DropdownMenuItem>
+        {onToggleOutline && <DropdownMenuItem onClick={onToggleOutline}>{boardOutline ? "隐藏子看板轮廓" : "显示子看板轮廓"}</DropdownMenuItem>}
+        <DropdownMenuItem variant="destructive" onClick={() => setConfirming(true)}>恢复默认值</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+    <AlertDialog open={confirming} onOpenChange={setConfirming}>
+      <AlertDialogContent>
+        <AlertDialogHeader><AlertDialogTitle>恢复{name}默认值</AlertDialogTitle></AlertDialogHeader>
+        <p className="text-sm text-muted-foreground">将恢复「{name}」的默认设置。</p>
+        <AlertDialogFooter>
+          <AlertDialogCancel>取消</AlertDialogCancel>
+          <AlertDialogAction onClick={() => { onReset(); setConfirming(false); }}>恢复</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </span>;
 }
 
@@ -218,5 +258,8 @@ function SelectMode({ value, options, disabled, onChange }: {
     { value: "original", label: "原始尺寸" },
     { value: "stretch", label: "拉伸填充" },
   ];
-  return <Select disabled={disabled} size="small" aria-label={options ? "轮播动画" : "全屏显示模式"} value={value} optionList={items} onChange={(next) => onChange(String(next))}/>;
+  return <Select disabled={disabled} aria-label={options ? "轮播动画" : "全屏显示模式"} value={value} onValueChange={(next) => { if (typeof next === "string") onChange(next); }}>
+    <SelectTrigger aria-label={options ? "轮播动画" : "全屏显示模式"} size="sm" className="w-full"><SelectValue/></SelectTrigger>
+    <SelectContent>{items.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+  </Select>;
 }

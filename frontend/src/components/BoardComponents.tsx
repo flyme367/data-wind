@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState, type DragEvent as ReactDragEvent, type ReactNode } from "react";
-import { Button, Empty, Toast } from "@douyinfe/semi-ui";
+import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Empty } from "@/components/ui-ext/empty";
+import { Toast } from "@/lib/toast";
 
 import { Cctv, FileText, Image, Images, Layers, ListVideo, Music, Type, Video } from "lucide-react";
 import { BACKGROUND_BOARD_PAGE_ID, FOREGROUND_BOARD_PAGE_ID, dataChangeArrow, dataChangeTrend,
@@ -18,7 +21,6 @@ import type { SceneNode } from "../types";
 import { getSceneBridge } from "../workers/bridge";
 import { twinCatalog } from "../data/catalog";
 import { createTemplateScene } from "../data/sceneTemplates";
-import { Radio, RadioGroup } from "@douyinfe/semi-ui";
 import { deleteUserAsset, readUserAssets, USER_ASSETS_EVENT, type UserAsset } from "../state/userAssets";
 import ControlThumb from "./ControlThumb";
 import { getState } from "../state/store";
@@ -71,7 +73,7 @@ function TopologyThumb() {
 }
 
 function TopologyCard({ entry }: { entry: (typeof topologyCatalog)[number] }) {
-  return <Button className="chart-card" theme="borderless" type="tertiary" title={`${entry.label} · ${entry.category}`}
+  return <Button className="chart-card" variant="ghost" title={`${entry.label} · ${entry.category}`}
     {...widgetDragProps(() => widgetNode(entry.kind))}
     onClick={() => insertWidget(widgetNode(entry.kind))}>
     <span className="chart-thumb"><TopologyThumb /></span>
@@ -90,7 +92,7 @@ function ChartThumb({ entry }: { entry: ChartCatalogEntry }) {
 }
 
 function ChartCard({ entry }: { entry: ChartCatalogEntry }) {
-  return <Button className="chart-card" theme="borderless" type="tertiary" title={`${entry.label} · ${entry.category}`}
+  return <Button className="chart-card" variant="ghost" title={`${entry.label} · ${entry.category}`}
     {...widgetDragProps(() => chartPaletteNode(entry))}
     onClick={() => insertWidget(chartPaletteNode(entry))}>
     <span className="chart-thumb"><ChartThumb entry={entry} /></span>
@@ -98,14 +100,15 @@ function ChartCard({ entry }: { entry: ChartCatalogEntry }) {
   </Button>;
 }
 
-/** 素材分类 chips：Semi RadioGroup(type=button) 官方分段控件。
+/** 素材分类 chips：ToggleGroup 分段控件（单选，始终有一项选中）。
  *  is-text 对齐山海鲸纯文字 chip（图表/文本/媒体/控件），默认带框（拓扑/套件）。 */
 function PaletteChips({ label, categories, chip, onChange, framed = false }:
   { label: string; categories: readonly string[]; chip: string; onChange: (next: string) => void; framed?: boolean }) {
-  return <RadioGroup type="button" buttonSize="small" aria-label={label} value={chip} onChange={(e) => onChange(String(e.target.value))}
+  return <ToggleGroup variant={framed ? "outline" : "ghost"} size="sm" spacing={0} aria-label={label}
+    value={[chip]} onValueChange={(next) => { const value = next[next.length - 1]; if (typeof value === "string") onChange(value); }}
     className={`palette-chips-radio ${framed ? "is-framed" : "is-text"}`}>
-    {categories.map((name) => <Radio key={name} value={name}>{name}</Radio>)}
-  </RadioGroup>;
+    {categories.map((name) => <ToggleGroupItem key={name} value={name}>{name}</ToggleGroupItem>)}
+  </ToggleGroup>;
 }
 
 /** chips 状态由面板层持有（拓扑/套件的分组模板条需要与 chips 联动）。 */
@@ -127,7 +130,7 @@ function ChartPalette({ query, chip, onChip }: ChipProps) {
 /** 山海鲸「3D」素材分类：子页签 全部/锦绣孪生/3D图表；「锦绣孪生」对应山海鲸「鲸孪生」子库，
  *  收录可整组插入画布的孪生场景模板（模板目录见 data/catalog.ts）。 */
 function TwinCard({ entry }: { entry: (typeof twinCatalog)[number] }) {
-  return <Button className="chart-card" theme="borderless" type="tertiary" title={`${entry.name} · ${entry.description}`}
+  return <Button className="chart-card" variant="ghost" title={`${entry.name} · ${entry.description}`}
     onClick={() => insertOnce(`twin:${entry.id}`, () => getSceneBridge().post({ type: "appendScene", name: entry.name, tree: createTemplateScene(entry.id) }))}>
     <span className="chart-thumb"><img className="twin-thumb-img" src={entry.image} alt={entry.name} loading="lazy" draggable={false} /></span>
     <span className="chart-card-name">{entry.name}</span>
@@ -176,7 +179,7 @@ function TextThumb({ entry }: { entry: TextCatalogEntry }) {
 }
 
 function TextCard({ entry }: { entry: TextCatalogEntry }) {
-  return <Button className="chart-card" theme="borderless" type="tertiary" title={`${entry.label} · ${entry.category}`}
+  return <Button className="chart-card" variant="ghost" title={`${entry.label} · ${entry.category}`}
     {...widgetDragProps(() => textPaletteNode(entry))}
     onClick={() => insertWidget(textPaletteNode(entry))}>
     <span className="chart-thumb"><TextThumb entry={entry} /></span>
@@ -198,7 +201,7 @@ function TextPalette({ query, chip, onChip }: ChipProps) {
 }
 
 function ControlCard({ entry }: { entry: ControlCatalogEntry }) {
-  return <Button className="control-card" theme="borderless" type="tertiary" title={`${entry.label} · ${entry.category}`}
+  return <Button className="control-card" variant="ghost" title={`${entry.label} · ${entry.category}`}
     {...widgetDragProps(() => widgetNode(entry.kind))}
     onClick={() => insertWidget(widgetNode(entry.kind))}>
     <span className="control-card-preview"><ControlThumb kind={entry.kind} /></span>
@@ -229,7 +232,7 @@ function MediaThumb({ entry }: { entry: MediaCatalogEntry }) {
 }
 
 function MediaCard({ entry }: { entry: MediaCatalogEntry }) {
-  return <Button className="chart-card" theme="borderless" type="tertiary" title={`${entry.label} · ${entry.category}`}
+  return <Button className="chart-card" variant="ghost" title={`${entry.label} · ${entry.category}`}
     {...widgetDragProps(() => widgetNode(entry.kind))}
     onClick={() => insertWidget(widgetNode(entry.kind))}>
     <span className="chart-thumb"><MediaThumb entry={entry} /></span>
@@ -271,7 +274,7 @@ function LegacyMapThumb({ entry }: { entry: LegacyMapCatalogEntry }) {
 }
 
 function LegacyMapCard({ entry }: { entry: LegacyMapCatalogEntry }) {
-  return <Button className="chart-card" theme="borderless" type="tertiary" title={`${entry.label} · ${entry.category}`}
+  return <Button className="chart-card" variant="ghost" title={`${entry.label} · ${entry.category}`}
     {...widgetDragProps(() => widgetNode(entry.kind))}
     onClick={() => insertWidget(widgetNode(entry.kind))}>
     <span className="chart-thumb"><LegacyMapThumb entry={entry} /></span>
@@ -285,7 +288,7 @@ function MapCard({ entry }: { entry: MapCatalogEntry }) {
     if (entry.group) getSceneBridge().post({ type: "insertKit", nodes: mapGroupNodes(entry) });
     else getSceneBridge().post({ type: "add", node: mapPaletteNode(entry) as SceneNode });
   });
-  return <Button className="chart-card" theme="borderless" type="tertiary" title={`${entry.label} · ${entry.category}`}
+  return <Button className="chart-card" variant="ghost" title={`${entry.label} · ${entry.category}`}
     {...(entry.group ? {} : widgetDragProps(() => mapPaletteNode(entry)))}
     onClick={insert}>
     <span className="chart-thumb map-thumb">
@@ -348,7 +351,7 @@ function KitCard({ entry, onInsert }: { entry: KitCatalogEntry; onInsert?: () =>
     catch (error) { Toast.error(error instanceof Error ? error.message : "套件加载失败，请重试"); }
     finally { setLoading(false); }
   });
-  return <Button className="chart-card kit-card" theme="borderless" type="tertiary" loading={loading}
+  return <Button className="chart-card kit-card" variant="ghost" disabled={loading}
     title={`${entry.label} · ${entry.familyLabel}`} draggable={!loading}
     onDragStart={event => { event.dataTransfer.setData(KIT_MIME, entry.id); event.dataTransfer.effectAllowed = "copy"; }}
     onClick={insert}>

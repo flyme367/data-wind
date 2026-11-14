@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Button, Empty, Toast } from "@douyinfe/semi-ui";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
+import { Empty } from "@/components/ui-ext/empty";
+import { Toast } from "@/lib/toast";
 import { Cube, Delete, Download, Folder, Plus } from "@icon-park/react";
 import { importModelFiles } from "../engine/modelAsset";
 import { deleteModelAsset, getModelAsset, listModelAssets, onModelAssetsChanged, saveModelAsset, type ModelAssetMeta } from "../state/modelAssets";
@@ -56,8 +59,8 @@ export default function ModelAssetLibrary() {
   return <>
     <div className="content-title"><h1>我的模型</h1><span>导入 Blender 导出的模型，保存到本地资产库</span></div>
     <div className="model-import-actions">
-      <Button theme="solid" icon={<Plus />} loading={busy} disabled={busy} onClick={() => filesRef.current?.click()}>导入模型</Button>
-      <Button icon={<Folder />} disabled={busy} onClick={() => folderRef.current?.click()}>选择模型文件夹</Button>
+      <Button disabled={busy} onClick={() => filesRef.current?.click()}>{busy ? <Spinner /> : <Plus />}导入模型</Button>
+      <Button variant="outline" disabled={busy} onClick={() => folderRef.current?.click()}><Folder />选择模型文件夹</Button>
     </div>
     <p className="model-import-help">支持 GLB、glTF、OBJ 和 .dwasset。外部 .bin、.mtl 与贴图需同时选择；包含子目录时请选择文件夹。单次导入一个模型，文件总计不超过 20 MB。</p>
     <p className="model-import-help">资产保存在当前浏览器，可下载 .dwasset 供 Bevy 使用。编辑器使用顶点颜色近似显示贴图。</p>
@@ -71,8 +74,8 @@ export default function ModelAssetLibrary() {
     {assets.length ? <div className="model-library-grid">{assets.map((asset) => <article key={asset.id} className="model-library-card">
       <div className="model-library-icon"><Cube size={38} /></div>
       <div className="model-library-info"><strong title={asset.name}>{asset.name}</strong><small>{asset.triangles.toLocaleString()} 个三角面 · {asset.textures} 张贴图</small><small>{(asset.size / 1024 / 1024).toFixed(2)} MiB · {asset.sourceName}</small></div>
-      <div className="model-library-actions"><Button size="small" icon={<Download />} aria-label={`下载模型 ${asset.name}`} onClick={() => void download(asset)}>下载</Button>
-        <Button size="small" icon={<Delete />} aria-label={`删除模型 ${asset.name}`} onClick={() => void remove(asset)} /></div>
+      <div className="model-library-actions"><Button variant="outline" size="sm" aria-label={`下载模型 ${asset.name}`} onClick={() => void download(asset)}><Download />下载</Button>
+        <Button variant="outline" size="icon-sm" aria-label={`删除模型 ${asset.name}`} onClick={() => void remove(asset)}><Delete /></Button></div>
     </article>)}</div> : !error && <Empty description="还没有模型，导入后可在项目的 3D 模型素材库中使用" />}
   </>;
 }

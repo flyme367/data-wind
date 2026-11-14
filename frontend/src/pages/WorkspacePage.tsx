@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { Button, Input, Layout, Modal, Nav, Notification, Popover, Radio, RadioGroup, Toast, Tooltip } from "@douyinfe/semi-ui";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Notification, Toast } from "@/lib/toast";
 import { AllApplication, ApplicationMenu, ChartHistogram, Cube, CubeThree, Earth, Edit, FolderOpen, FullScreen, Keyboard, Layers, MapTwo, Monitor, Paint, Play,
   Plus, Refresh, Search, Terminal, Text, VideoTwo, ViewGridList, Viewfinder } from "@icon-park/react";
 import { Shirt, TriangleAlert } from "lucide-react";
@@ -11,8 +17,6 @@ import { LiveDataManager } from "../data/liveData";
 import { triggerDataEdge } from "../data/interactionEdges";
 import { interactionConditionMatches, runBoardInteractions, runDataInteractions, runInteractions, copySelection, pasteSelection, duplicateSelection, deleteSelection, selectAll, focusSelection, selection } from "../state/sceneActions";
 import TopMenuBar, { saveCurrentScene } from "../components/TopMenuBar";
-// 编辑态提示浮层顶部下探：避开 36px 顶部工具栏，落在画布上层
-Notification.config({ top: 48, zIndex: 1010 });
 import Viewport from "../components/Viewport";
 import TourBar from "../components/TourBar";
 import PropertiesPanel from "../components/PropertiesPanel";
@@ -124,17 +128,14 @@ export default function WorkspacePage({ projectId }: { projectId: string }) {
   const [stageWidth, setStageWidth] = useState(900);
   const [stageHeight,setStageHeight] = useState(680);
   useEffect(() => { if (preview || editing) setBoardSelected(false); }, [preview, editing]);
-  // 编辑态提示：官方 Notification 浮层悬浮于画布上层（顶部居中、常驻），替代原顶部整条提示栏
+  // 编辑态提示：顶部居中常驻浮层（Toaster 已在 App 根挂载，top-center offset 48），替代原顶部整条提示栏
   useEffect(() => {
     if (!editing || preview) return;
     Notification.open({
       id: "dw-editing-notice",
-      position: "top",
       duration: 0,
-      showClose: false,
-      style: { background: "#202024f2", border: "1px solid #3a3d42", boxShadow: "0 8px 24px #00000059" },
-      content: <span className="editing-notice-hint">进入编辑状态会自动隐藏其他组件图层，双击空白区域退出编辑状态
-        <Button size="small" type="warning" theme="solid" onClick={() => setEditing(false)}>退出编辑</Button></span>,
+      content: (<span className="editing-notice-hint">进入编辑状态会自动隐藏其他组件图层，双击空白区域退出编辑状态
+        <Button size="sm" variant="destructive" onClick={() => setEditing(false)}>退出编辑</Button></span>) as unknown as string,
     });
     return () => { Notification.close("dw-editing-notice"); };
   }, [editing, preview]);
@@ -649,27 +650,28 @@ export default function WorkspacePage({ projectId }: { projectId: string }) {
   return <div className={`editor-page ${preview ? "is-preview" : ""}`}>
     {!bootGone && <EditorBootSkeleton projectName={projectName} hiding={bootHiding} />}
     <TopMenuBar projectName={projectName} projectId={projectId} editing={editing} setEditing={changeEditing} preview={preview} setPreview={setPreview} />
-    {/* 编辑器骨架改用 Semi 布局组件规划（docs 依 @douyinfe/semi-mcp 取回的官方 Layout 文档）：
-        Layout(纵向) > Layout hasSider(横向) > Sider 图层树 + 素材列 + Content 画布 + Sider 固定属性栏；Footer 底栏 */}
-    <Layout className={`editor-body ${assetCategory && !preview ? "asset-open" : ""}`}>
-      <Layout hasSider className="editor-body-row">
+    {/* 编辑器骨架：纵向 body > 横向行（图层树 aside + 素材列 + 画布 main + 属性栏）；底部 footer 工具栏 */}
+    <div className={`editor-body ${assetCategory && !preview ? "asset-open" : ""}`}>
+      <div className="editor-body-row">
       {!preview && <>
-        <Layout.Sider className={`editor-tree ${treeCollapsed ? "is-collapsed" : ""}`} aria-label="图层树"><SceneTreePanel snapshot={snapshot} editing={editing} setEditing={changeEditing}
+        <aside className={`editor-tree ${treeCollapsed ? "is-collapsed" : ""}`} aria-label="图层树"><SceneTreePanel snapshot={snapshot} editing={editing} setEditing={changeEditing}
           boardName={state.boardLayer === "background" ? backgroundPage.name
             : state.boardLayer === "foreground" ? state.settings.boardForegroundPage?.name ?? "前景看板" : activePage.name}
           boardLayer={state.boardLayer === "foreground" ? "page" : state.boardLayer}
-          boardPageId={state.settings.boardActivePageId} onSelectRoot={openRoot} /></Layout.Sider>
+          boardPageId={state.settings.boardActivePageId} onSelectRoot={openRoot} /></aside>
         {/* 山海鲸式浮层素材库：rail 定宽撑起列；看板态展开后为整块覆盖面板（展开 rail + 分组条 + 抽屉），
             3D 编辑态维持旧抽屉（AssetLibraryPanel），排版依据 docs/board-asset-panel-sync.md */}
         <div className="editor-asset-column">
           <nav className={`editor-asset-rail ${editing ? "is-3d" : "is-board"}`} aria-label="素材类型">
-            <Button className="asset-rail-search-trigger" size="small" theme="borderless" icon={<Search size={17} />}
-              aria-label="搜索组件" onClick={() => { setAssetCategory((prev) => prev ?? "全部"); setAssetSearchFocusTick((tick) => tick + 1); }} />
-            <Nav selectedKeys={assetCategory ? [assetCategory] : []}
-            onClick={({ itemKey }) => { if (typeof itemKey === "string") setAssetCategory(assetCategory === itemKey ? null : itemKey); }}>
-            {categories.map((category) => <Nav.Item key={category.label} itemKey={category.label} icon={category.icon}
-              text={<span className="asset-rail-label">{category.label}{!editing && <i className="asset-rail-count">{boardAssetCounts[category.label] ?? 0}</i>}</span>} />)}
-          </Nav></nav>
+            <Button className="asset-rail-search-trigger" variant="ghost" size="icon-sm" aria-label="搜索组件"
+              onClick={() => { setAssetCategory((prev) => prev ?? "全部"); setAssetSearchFocusTick((tick) => tick + 1); }}><Search size={17} /></Button>
+            {categories.map((category) => <button key={category.label} type="button"
+              className={assetCategory === category.label ? "is-selected" : ""} aria-pressed={assetCategory === category.label}
+              onClick={() => setAssetCategory(assetCategory === category.label ? null : category.label)}>
+              {category.icon}
+              <span className="asset-rail-label">{category.label}{!editing && <i className="asset-rail-count">{boardAssetCounts[category.label] ?? 0}</i>}</span>
+            </button>)}
+          </nav>
           {assetCategory && (editing ? <aside className={`editor-asset-drawer ${libraryExpanded ? "is-expanded" : ""}`}>
             <AssetLibraryPanel category={assetCategory} libraryExpanded={libraryExpanded}
               onToggleLibrary={() => setLibraryExpanded(!libraryExpanded)} onClose={() => setAssetCategory(null)} />
@@ -677,37 +679,49 @@ export default function WorkspacePage({ projectId }: { projectId: string }) {
             : <section className={`asset-overlay-panel is-${assetTab} ${assetCategory === "套件" ? "is-kit" : ""} ${["拓扑", "套件"].includes(assetCategory) ? "has-family" : ""} ${libraryExpanded ? "is-expanded" : ""}`}>
               <div className="asset-panel-rail">
                 {assetTab !== "asset" && <div className="asset-rail-search-row">
-                  <Input className="asset-rail-search" size="small" prefix={<Search size={14} />} placeholder="搜索组件"
-                    value={assetQuery} onChange={setAssetQuery} showClear aria-label="搜索组件" />
+                  <div className="asset-rail-search relative">
+                    <Search className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-muted-foreground" size={14} />
+                    <Input className="h-7 text-xs pl-7 pr-6" placeholder="搜索组件" aria-label="搜索组件" value={assetQuery}
+                      onChange={(event) => setAssetQuery(event.target.value)} />
+                    {assetQuery && <button aria-label="清空组件搜索" className="absolute top-1/2 right-1.5 -translate-y-1/2 border-0 bg-transparent text-muted-foreground"
+                      onClick={() => setAssetQuery("")}>×</button>}
+                  </div>
                 </div>}
                 <nav className="asset-rail-expanded" aria-label="素材类型展开">
-                  {assetTab === "asset" ? <Nav className="asset-rail-nav" selectedKeys={["__asset"]}>
-                    <Nav.Item itemKey="__asset" icon={<FolderOpen {...railIcon} />}
-                      text={<span className="asset-rail-label">全部<i className="asset-rail-count">{readUserAssets().length}</i></span>} />
-                  </Nav>
-                    : <Nav className="asset-rail-nav" selectedKeys={[assetCategory]}
-                      onClick={({ itemKey }) => { if (typeof itemKey === "string") setAssetCategory(assetCategory === itemKey ? null : itemKey); }}>
-                      {boardCategories.map((category) => <Nav.Item key={category.label} itemKey={category.label} icon={category.icon}
-                        text={<span className="asset-rail-label">{category.label}<i className="asset-rail-count">{boardAssetCounts[category.label] ?? 0}</i></span>} />)}
-                    </Nav>}
+                  {assetTab === "asset" ? <div className="asset-rail-nav">
+                    <button type="button" className="is-selected" aria-current="true">
+                      <FolderOpen {...railIcon} />
+                      <span className="asset-rail-label">全部<i className="asset-rail-count">{readUserAssets().length}</i></span>
+                    </button>
+                  </div>
+                    : <div className="asset-rail-nav">
+                      {boardCategories.map((category) => <button key={category.label} type="button"
+                        className={assetCategory === category.label ? "is-selected" : ""} aria-pressed={assetCategory === category.label}
+                        onClick={() => setAssetCategory(assetCategory === category.label ? null : category.label)}>
+                        {category.icon}
+                        <span className="asset-rail-label">{category.label}<i className="asset-rail-count">{boardAssetCounts[category.label] ?? 0}</i></span>
+                      </button>)}
+                    </div>}
                 </nav>
               </div>
               <div className="asset-panel-main">
                 <header className="asset-panel-header">
-                  <RadioGroup type="button" buttonSize="small" className="asset-theme-tabs" aria-label="素材库切换"
-                    value={assetTab} onChange={(e) => {
-                      const next = String(e.target.value) as typeof assetTab;
-                      setAssetTab(next);
+                  <RadioGroup className="asset-theme-tabs flex" aria-label="素材库切换" value={assetTab}
+                    onValueChange={(next) => {
+                      setAssetTab(next as typeof assetTab);
                       if (next === "light") setKitFamilyId("light");
                       if (next === "dark" && assetTab === "light") setKitFamilyId("free");
                     }}>
-                    <Radio value="dark">深色</Radio><Radio value="light">浅色</Radio><Radio value="asset">资产库</Radio>
+                    <label className="flex items-center gap-1.5"><RadioGroupItem value="dark" /><span>深色</span></label>
+                    <label className="flex items-center gap-1.5"><RadioGroupItem value="light" /><span>浅色</span></label>
+                    <label className="flex items-center gap-1.5"><RadioGroupItem value="asset" /><span>资产库</span></label>
                   </RadioGroup>
                   <div className="asset-panel-actions">
-                    <Tooltip content="刷新素材"><span><Button size="small" theme="borderless" icon={<Refresh />}
-                      aria-label="刷新素材" onClick={() => setRefreshKey((key) => key + 1)} /></span></Tooltip>
-                    <Tooltip content={libraryExpanded ? "收起素材库" : "展开素材库"}><span><Button size="small" theme="borderless" icon={<FullScreen />}
-                      aria-label={libraryExpanded ? "收起素材库" : "展开素材库"} onClick={() => setLibraryExpanded(!libraryExpanded)} /></span></Tooltip>
+                    <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm"
+                      aria-label="刷新素材" onClick={() => setRefreshKey((key) => key + 1)} />}><Refresh /></TooltipTrigger><TooltipContent>刷新素材</TooltipContent></Tooltip>
+                    <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm"
+                      aria-label={libraryExpanded ? "收起素材库" : "展开素材库"} onClick={() => setLibraryExpanded(!libraryExpanded)} />}><FullScreen /></TooltipTrigger>
+                      <TooltipContent>{libraryExpanded ? "收起素材库" : "展开素材库"}</TooltipContent></Tooltip>
                   </div>
                 </header>
                 <div className="asset-panel-body" key={refreshKey}>
@@ -721,7 +735,7 @@ export default function WorkspacePage({ projectId }: { projectId: string }) {
             </section>)}
         </div>
       </>}
-      {/* stage 保持原生 main：Layout.Content 是 class 组件不转发 ref（ResizeObserver 需要 DOM）；语义一致 */}
+      {/* stage 保持原生 main（ResizeObserver 需要 DOM ref）；语义一致 */}
       <main className={`editor-stage ${!preview ? "has-editor-rulers" : ""} ${editing && !preview ? "is-editing" : ""} ${!preview && debugConsoleOpen ? "has-debug-console" : ""}`} ref={stageRef}>
         {!preview && <><div className="ruler ruler-horizontal">{Array.from({ length: 25 }, (_, index) => <span key={index}>{(index - 2) * 400}</span>)}</div>
           <div className="ruler ruler-vertical">{Array.from({ length: 30 }, (_, index) => <span key={index}>{(index - 6) * 400}</span>)}</div></>}
@@ -785,14 +799,14 @@ export default function WorkspacePage({ projectId }: { projectId: string }) {
                 onDoubleClick={event => event.stopPropagation()} />)}
             </div>}
             {preview && <TourBar />}
-            {!editing && !preview && <Button className="enter-3d" icon={<Cube />} onClick={() => setEditing(true)}>双击进入 3D 编辑</Button>}
+            {!editing && !preview && <Button className="enter-3d" variant="ghost" onClick={() => setEditing(true)}><Cube />双击进入 3D 编辑</Button>}
           </div>
         </div>
         {!preview && debugConsoleOpen && <DebugConsole onClose={() => setDebugConsoleOpen(false)} />}
       </main>
       {!preview && <PropertiesPanel editing={editing} rootNode={rootNodeId} />}
-      </Layout>
-      {!preview && <Layout.Footer className="board-toolbar">
+      </div>
+      {!preview && <footer className="board-toolbar">
         <input ref={backgroundFileRef} className="board-background-file-input" type="file" accept="image/*,video/*"
           aria-label="添加背景图片或视频" onChange={(event) => {
             const file = event.currentTarget.files?.[0];
@@ -800,7 +814,9 @@ export default function WorkspacePage({ projectId }: { projectId: string }) {
             if (file) void addBoardBackground(file);
           }} />
         <div className={`board-toolbar-tree ${treeCollapsed ? "is-collapsed" : ""}`}>
-          <Tooltip content={treeCollapsed ? "展开图层列表" : "收起图层列表"}><span><Button size="small" theme="borderless" icon={<Layers />} aria-label={treeCollapsed ? "展开图层列表" : "收起图层列表"} onClick={() => setTreeCollapsed(!treeCollapsed)} /></span></Tooltip>
+          <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm"
+            aria-label={treeCollapsed ? "展开图层列表" : "收起图层列表"} onClick={() => setTreeCollapsed(!treeCollapsed)} />}><Layers /></TooltipTrigger>
+            <TooltipContent>{treeCollapsed ? "展开图层列表" : "收起图层列表"}</TooltipContent></Tooltip>
         </div>
         <div className={`board-toolbar-assets ${treeCollapsed ? "is-tree-collapsed" : ""}`} />
         <div className="board-toolbar-main">
@@ -808,17 +824,17 @@ export default function WorkspacePage({ projectId }: { projectId: string }) {
             {/* 前景：未创建时显示「前景 ⊕」（点击创建并进入前景看板），已创建为可删除页签（1:1 山海鲸 4.7.13） */}
             {!state.settings.boardForegroundPage ? (
               <div className="board-tab-group board-foreground-group">
-                <Button size="small" className="board-strip-tab" onClick={activateForegroundBoard}>前景</Button>
-                <Button size="small" theme="borderless" className="board-tab-add-circle" aria-label="添加前景看板"
+                <Button size="sm" variant="ghost" className="board-strip-tab" onClick={activateForegroundBoard}>前景</Button>
+                <Button size="sm" variant="ghost" className="board-tab-add-circle" aria-label="添加前景看板"
                   onClick={activateForegroundBoard}>
                   <span className="board-tab-plus-circle"><Plus size={8} /></span>
                 </Button>
               </div>
             ) : (
               <div className="board-tab-group board-foreground-group has-close">
-                <Button size="small" role="tab" aria-selected={state.boardLayer === "foreground" && !editing}
+                <Button size="sm" variant="ghost" role="tab" aria-selected={state.boardLayer === "foreground" && !editing}
                   className={`board-strip-tab ${state.boardLayer === "foreground" && !editing ? "current-board" : ""}`}
-                  icon={<Layers size={13} />} onClick={activateForegroundBoard}>前景看板</Button>
+                  onClick={activateForegroundBoard}><Layers size={13} />前景看板</Button>
                 <button type="button" className="board-tab-close" aria-label="删除前景看板"
                   onClick={() => requestDelete({ kind: "foreground" })}>×</button>
               </div>
@@ -828,30 +844,30 @@ export default function WorkspacePage({ projectId }: { projectId: string }) {
                 const active = page.id === state.settings.boardActivePageId && state.boardLayer === "page" && !editing;
                 return <div key={page.id} className={`board-page-tab-wrap ${active ? "is-active" : ""}`}
                   onContextMenu={(event) => { event.preventDefault(); openSceneContextMenu(event.clientX, event.clientY, `@pagetab:${page.id}`); }}>
-                  <Button size="small" role="tab" aria-selected={active}
+                  <Button size="sm" variant="ghost" role="tab" aria-selected={active}
                     className={`board-strip-tab board-page-tab ${active ? "current-board" : ""}`}
-                    icon={<Monitor size={12} />} onClick={() => activateBoardPage(page.id)}>{page.name}</Button>
+                    onClick={() => activateBoardPage(page.id)}><Monitor size={12} />{page.name}</Button>
                   {state.settings.boardPages.length > 1 && <button type="button" className="board-tab-close"
                     aria-label={`删除${page.name}`} onClick={() => requestDelete({ kind: "page", id: page.id, name: page.name })}>×</button>}
                 </div>;
               })}
             </div>
             {/* 山海鲸「+」直接新建子看板（无菜单）；重命名/删除在页签右键与悬停 ✕ */}
-            <Button size="small" theme="borderless" className="board-page-add" aria-label="新建子看板"
+            <Button size="sm" variant="ghost" className="board-page-add" aria-label="新建子看板"
               onClick={() => createBoardPage(false)}><Plus size={16} /></Button>
             <div className="board-tab-group board-background-group">
               {state.boardLayer === "background" && !editing ? (
                 <>
-                  <Button size="small" role="tab" aria-selected className="board-strip-tab current-board"
-                    icon={<Layers size={13} />} onClick={activateBackgroundBoard}>背景看板</Button>
+                  <Button size="sm" variant="ghost" role="tab" aria-selected className="board-strip-tab current-board"
+                    onClick={activateBackgroundBoard}><Layers size={13} />背景看板</Button>
                   <button type="button" className="board-tab-close" aria-label="删除背景看板"
                     onClick={() => requestDelete({ kind: "background" })}>×</button>
                 </>
               ) : (
                 <>
-                  <Button size="small" role="tab" aria-selected={false} className="board-strip-tab"
+                  <Button size="sm" variant="ghost" role="tab" aria-selected={false} className="board-strip-tab"
                     onClick={activateBackgroundBoard}>背景</Button>
-                  <Button size="small" theme="borderless" className="board-tab-add-circle" aria-label="添加背景图片或视频"
+                  <Button size="sm" variant="ghost" className="board-tab-add-circle" aria-label="添加背景图片或视频"
                     onClick={() => { activateBackgroundBoard(); backgroundFileRef.current?.click(); }}>
                     <span className="board-tab-plus-circle"><Plus size={8} /></span>
                   </Button>
@@ -861,49 +877,68 @@ export default function WorkspacePage({ projectId }: { projectId: string }) {
           </div>
           <span className="toolbar-spacer" />
           <span className="zoom-select-hint" title="鼠标滚轮或触控板双指捏合缩放画布">
-            <Input aria-label="画布缩放" size="small" className="board-zoom-input" value={zoomDraft}
-              onChange={(value) => setZoomDraft(String(value ?? ""))}
+            <Input aria-label="画布缩放" className="board-zoom-input h-7 text-center text-[11px] text-[#e5e5e5]" value={zoomDraft}
+              onChange={(event) => setZoomDraft(event.target.value)}
               onFocus={() => { zoomInputFocused.current = true; }}
-              onBlur={(event) => commitZoomDraft((event.currentTarget as HTMLInputElement).value)}
+              onBlur={(event) => commitZoomDraft(event.currentTarget.value)}
               onKeyDown={(event) => { if (event.key === "Enter") (event.currentTarget as HTMLInputElement).blur(); }} />
           </span>
-          <Tooltip content="最佳显示比例"><span><Button size="small" theme="borderless" icon={<FullScreen />} aria-label="最佳显示比例" onClick={() => setFit(true)} /></span></Tooltip>
-          <Popover trigger="custom" visible={shortcuts} position="topRight" spacing={8}
-            onClickOutSide={() => setShortcuts(false)}
-            content={<div className="shortcut-panel" role="dialog" aria-label="快捷键列表">
-              <header className="shortcut-panel-head"><span>快捷键列表</span>
-                <button type="button" className="shortcut-panel-close" aria-label="关闭快捷键列表"
-                  onClick={() => setShortcuts(false)}>×</button></header>
-              <ul className="shortcut-panel-list">{shortcutItems.map(([action, keys]) => <li key={action}>
-                <span className="shortcut-action">{action}</span><span className="shortcut-keys">{keys}</span></li>)}</ul>
-            </div>}>
-            <span><Tooltip content="快捷键列表"><Button size="small" theme="borderless" icon={<Keyboard />}
-              aria-label="快捷键列表" aria-expanded={shortcuts} onClick={() => setShortcuts((open) => !open)} /></Tooltip></span>
+          <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm"
+            aria-label="最佳显示比例" onClick={() => setFit(true)} />}><FullScreen /></TooltipTrigger><TooltipContent>最佳显示比例</TooltipContent></Tooltip>
+          <Popover open={shortcuts} onOpenChange={setShortcuts}>
+            <PopoverTrigger render={<span />}>
+              <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm"
+                aria-label="快捷键列表" aria-expanded={shortcuts} />}><Keyboard /></TooltipTrigger><TooltipContent>快捷键列表</TooltipContent></Tooltip>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="end" sideOffset={8} className="w-auto min-w-0 gap-0 p-0">
+              <div className="shortcut-panel" role="dialog" aria-label="快捷键列表">
+                <header className="shortcut-panel-head"><span>快捷键列表</span>
+                  <button type="button" className="shortcut-panel-close" aria-label="关闭快捷键列表"
+                    onClick={() => setShortcuts(false)}>×</button></header>
+                <ul className="shortcut-panel-list">{shortcutItems.map(([action, keys]) => <li key={action}>
+                  <span className="shortcut-action">{action}</span><span className="shortcut-keys">{keys}</span></li>)}</ul>
+              </div>
+            </PopoverContent>
           </Popover>
-          <Tooltip content="调试面板"><span><Button size="small" theme="borderless" icon={<Terminal />} aria-label="调试面板"
-            aria-pressed={debugConsoleOpen} onClick={() => setDebugConsoleOpen((open) => !open)} /></span></Tooltip>
+          <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm"
+            aria-label="调试面板" aria-pressed={debugConsoleOpen} onClick={() => setDebugConsoleOpen((open) => !open)} />}><Terminal /></TooltipTrigger><TooltipContent>调试面板</TooltipContent></Tooltip>
         </div>
         <BoardStatusBar />
-      </Layout.Footer>}
-    </Layout>
+      </footer>}
+    </div>
     {!preview && <SceneContextMenuHost rootActions={{
       openRoot, edit3D: () => changeEditing(true),
       renamePage: () => openPageRename(),
       addPage: createBoardPage, deletePage: () => requestDelete({ kind: "page", id: state.settings.boardActivePageId, name: activePage.name }),
       canDeletePage: state.settings.boardPages.length > 1,
     }} />}
-    <Modal title="重命名子看板" visible={pageDialog} onCancel={() => setPageDialog(false)} okText="确定" cancelText="取消" width={360} onOk={renameActiveBoardPage}>
-      <Input aria-label="子看板名称" value={pageNameDraft} onChange={setPageNameDraft} maxLength={100} />
-    </Modal>
-    <Modal title="删除提醒" visible={Boolean(deleteDialog)} onCancel={() => setDeleteDialog(null)} width={400}
-      okText="确定" cancelText="取消" onOk={confirmDeleteDialog}>
-      <div className="board-delete-confirm">
-        <TriangleAlert size={22} className="board-delete-confirm-icon" aria-hidden="true" />
-        <span>{deleteDialog?.kind === "page" ? `是否删除${deleteDialog.name}？` : deleteDialog?.kind === "foreground" ? "是否删除前景看板？" : "是否删除背景看板？"}</span>
-      </div>
-      <label className="board-delete-skip"><input type="checkbox" checked={skipDeleteConfirm}
-        onChange={(event) => setSkipDeleteConfirm(event.currentTarget.checked)} />不再提示</label>
-    </Modal>
+    <Dialog open={pageDialog} onOpenChange={(open) => { if (!open) setPageDialog(false); }}>
+      <DialogContent className="sm:max-w-[360px]!">
+        <DialogHeader><DialogTitle>重命名子看板</DialogTitle></DialogHeader>
+        <Input aria-label="子看板名称" value={pageNameDraft} maxLength={100}
+          onChange={(event) => setPageNameDraft(event.target.value)}
+          onKeyDown={(event) => event.key === "Enter" && renameActiveBoardPage()} />
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setPageDialog(false)}>取消</Button>
+          <Button onClick={renameActiveBoardPage}>确定</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    <Dialog open={Boolean(deleteDialog)} onOpenChange={(open) => { if (!open) setDeleteDialog(null); }}>
+      <DialogContent className="sm:max-w-[400px]!">
+        <DialogHeader><DialogTitle>删除提醒</DialogTitle></DialogHeader>
+        <div className="board-delete-confirm">
+          <TriangleAlert size={22} className="board-delete-confirm-icon" aria-hidden="true" />
+          <span>{deleteDialog?.kind === "page" ? `是否删除${deleteDialog.name}？` : deleteDialog?.kind === "foreground" ? "是否删除前景看板？" : "是否删除背景看板？"}</span>
+        </div>
+        <label className="board-delete-skip"><input type="checkbox" checked={skipDeleteConfirm}
+          onChange={(event) => setSkipDeleteConfirm(event.currentTarget.checked)} />不再提示</label>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setDeleteDialog(null)}>取消</Button>
+          <Button onClick={confirmDeleteDialog}>确定</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     {preview && <PreviewExitHint onExit={() => setPreview(false)} />}
     {state.saveError && <div className="save-error" role="alert">{state.saveError}</div>}
   </div>;
@@ -923,6 +958,6 @@ function PreviewExitHint({ onExit }: { onExit: () => void }) {
     window.addEventListener("pointermove", awaken);
     return () => { window.removeEventListener("pointermove", awaken); window.clearTimeout(idleTimer.current); };
   }, []);
-  return <Button size="small" theme="solid" icon={<FullScreen />} className={`preview-exit ${visible ? "" : "is-idle"}`}
-    aria-label="退出预览" onClick={onExit}>退出预览</Button>;
+  return <Button size="sm" className={`preview-exit ${visible ? "" : "is-idle"}`}
+    aria-label="退出预览" onClick={onExit}><FullScreen />退出预览</Button>;
 }

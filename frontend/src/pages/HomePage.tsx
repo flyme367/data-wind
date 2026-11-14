@@ -1,5 +1,12 @@
-import { useMemo, useRef, useState } from "react";
-import { Avatar, Button, Dropdown, Input, Modal, Select, Toast, Tooltip } from "@douyinfe/semi-ui";
+import { useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
+import { Avatar, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Toast } from "@/lib/toast";
 import { Plus, Search, Delete, More, Export, Folder, Computer, AllApplication, Box, Download,
   Right, Play, Send, Refresh, LinkOut, Edit } from "@icon-park/react";
 import BrandLogo from "../components/BrandLogo";
@@ -21,6 +28,22 @@ type Section = "projects" | "trash" | "assets" | "models";
 /** 发布成品入口（viewer.html，独立构建产物，不含编辑器与 UI 框架） */
 const viewerUrl = (id: string) => `viewer.html?projectId=${encodeURIComponent(id)}`;
 const openViewer = (id: string) => window.open(viewerUrl(id), "_blank");
+
+const sortOptions = [
+  { value: "newest", label: "时间倒序" }, { value: "oldest", label: "时间正序" },
+  { value: "opened", label: "最近打开" }, { value: "name", label: "名称排序" }];
+
+/** 带 prefix 图标与 showClear 清除按钮的搜索框（Semi Input prefix/showClear → 相对定位包裹） */
+function SearchInput({ icon, clearLabel, value, onValueChange, className, ...rest }: {
+  icon: ReactNode; clearLabel: string; value: string; onValueChange: (value: string) => void;
+} & Omit<ComponentProps<"input">, "value" | "onChange">) {
+  return <div className={className}>
+    {icon}
+    <Input className="pl-8 pr-8" {...rest} value={value} onChange={(event) => onValueChange(event.target.value)} />
+    {value && <button aria-label={clearLabel} className="absolute top-1/2 right-1.5 -translate-y-1/2 border-0 bg-transparent text-muted-foreground"
+      onClick={() => onValueChange("")}>×</button>}
+  </div>;
+}
 
 function initialProjects() {
   let projects = loadProjects();
@@ -63,6 +86,7 @@ export default function HomePage() {
   const [dialog, setDialog] = useState<{ type: "rename" | "folder" | "move"; project?: ProjectMeta } | null>(null);
   const [draft, setDraft] = useState("");
   const [publishing, setPublishing] = useState<ProjectMeta | null>(null);
+  const [workspaceInfo, setWorkspaceInfo] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const refresh = () => setProjects(loadProjects());
   const update = (id: string, patch: Partial<ProjectMeta>) => {
@@ -97,6 +121,14 @@ export default function HomePage() {
     try { await exportPublishBundle(project.id, project.name); }
     catch (error) { Toast.error(error instanceof Error ? error.message : "发布包导出失败"); }
   };
+  const submitDialog = () => {
+    if (!draft.trim() && dialog?.type !== "move") return;
+    if (dialog?.type === "folder") {
+      if (folders.includes(draft.trim())) { Toast.warning("文件夹已存在"); return; }
+      const next = [...folders, draft.trim()]; localStorage.setItem("dw_folders", JSON.stringify(next)); setFolders(next);
+    } else if (dialog?.project) update(dialog.project.id, dialog.type === "move" ? { folder: draft || undefined } : { name: draft.trim() });
+    setDialog(null);
+  };
   const filtered = useMemo(() => projects.filter((p) =>
     (section === "trash" ? Boolean(p.trashedAt) : !p.trashedAt) &&
     (!folder || p.folder === folder) && p.name.toLowerCase().includes(query.trim().toLowerCase()),
@@ -117,12 +149,20 @@ export default function HomePage() {
     </aside>
     <div className="workbench-body">
       <header className="workbench-header">
-        <Input prefix={<Search />} placeholder="输入关键词搜索模板" aria-label="搜索模板"
-          value={templateQuery} onChange={setTemplateQuery} onEnterPress={() => setSection("assets")} showClear />
-        <Dropdown trigger="click" position="bottomRight" render={<Dropdown.Menu>
-          <Dropdown.Item onClick={() => { window.location.hash = "#/login"; }}>短信登录</Dropdown.Item>
-          <Dropdown.Item onClick={() => Modal.info({ title: "本地工作区", content: "项目与场景保存在当前浏览器，可导出 JSON 文件备份和迁移。" })}>工作区说明</Dropdown.Item>
-        </Dropdown.Menu>}><button className="workspace-account"><Avatar size="small" src="/reference/default-avatar-classic-gray.92ab041c.svg" /><span>本地工作区<small>本地项目</small></span></button></Dropdown>
+        <SearchInput icon={<Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />}
+          clearLabel="清空模板搜索" className="relative min-w-[200px] flex-1" placeholder="输入关键词搜索模板" aria-label="搜索模板"
+          value={templateQuery} onValueChange={setTemplateQuery}
+          onKeyDown={(event) => event.key === "Enter" && setSection("assets")} />
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<button className="workspace-account" />}>
+            <Avatar size="sm"><AvatarImage src="/reference/default-avatar-classic-gray.92ab041c.svg" /></Avatar>
+            <span>本地工作区<small>本地项目</small></span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => { window.location.hash = "#/login"; }}>短信登录</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setWorkspaceInfo(true)}>工作区说明</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </header>
       <main className="workbench-content">
         {section === "models" ? <ModelAssetLibrary /> : section === "assets" ? <>
@@ -133,37 +173,47 @@ export default function HomePage() {
             </button>)}</div>
         </> : <>
           <div className="project-actions">
-            {section === "projects" ? <><Button theme="solid" icon={<Plus />} onClick={() => { setTemplateId("empty"); setCreating(true); }}>新建</Button>
-              <Button icon={<Folder />} onClick={() => { setDraft(""); setDialog({ type: "folder" }); }}>新建文件夹</Button>
-              <Tooltip content="导入已导出的 JSON 项目"><span><Button className="import-project" icon={<Download />} onClick={() => fileRef.current?.click()}>导入项目</Button></span></Tooltip></>
+            {section === "projects" ? <><Button onClick={() => { setTemplateId("empty"); setCreating(true); }}><Plus />新建</Button>
+              <Button variant="ghost" onClick={() => { setDraft(""); setDialog({ type: "folder" }); }}><Folder />新建文件夹</Button>
+              <Tooltip><TooltipTrigger render={<Button className="import-project" variant="ghost"
+                onClick={() => fileRef.current?.click()} />}><Download />导入项目</TooltipTrigger><TooltipContent>导入已导出的 JSON 项目</TooltipContent></Tooltip></>
               : <span className="trash-note">删除的项目保存在回收站中，可随时恢复</span>}
           </div>
           <div className="project-filter-row">
             <div className="project-breadcrumb"><button onClick={() => setFolder(null)} className={!folder ? "current" : ""}>{section === "trash" ? "回收站" : "我的项目"}</button>
               {folder && <><Right /><span className="current">{folder}</span></>}</div>
-            <div className="project-filters"><Select aria-label="项目排序" value={sort} onChange={(value) => setSort(String(value))} optionList={[
-              { value: "newest", label: "时间倒序" }, { value: "oldest", label: "时间正序" },
-              { value: "opened", label: "最近打开" }, { value: "name", label: "名称排序" }]} />
-              <Input prefix={<Search />} placeholder="搜索项目" aria-label="搜索项目" value={query} onChange={setQuery} showClear /></div>
+            <div className="project-filters"><Select value={sort} onValueChange={(value) => setSort(String(value))} items={sortOptions}>
+              <SelectTrigger className="w-[128px] shrink-0" size="sm" aria-label="项目排序"><SelectValue /></SelectTrigger>
+              <SelectContent>{sortOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+            </Select>
+              <SearchInput icon={<Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />}
+                clearLabel="清空项目搜索" className="relative w-[310px]" placeholder="搜索项目" aria-label="搜索项目"
+                value={query} onValueChange={setQuery} /></div>
           </div>
           <div className="project-grid">
             {section === "projects" && !folder && !query && folders.map((name) => <button className="folder-card" key={name} onClick={() => setFolder(name)}><Folder /><span>{name}</span><small>{projects.filter((p) => p.folder === name && !p.trashedAt).length} 个项目</small></button>)}
             {filtered.map((project) => <article className="project-card" key={project.id}>
               <header><button className="project-name" title={project.name} onClick={() => openProject(project.id)}>{project.name}</button>
                 <div className="project-card-actions">
-                  <Tooltip content={section === "trash" ? "恢复" : "移入回收站"}><span><Button theme="borderless" icon={section === "trash" ? <Refresh /> : <Delete />}
-                    aria-label={`${section === "trash" ? "恢复" : "删除"}${project.name}`} onClick={() => update(project.id, { trashedAt: section === "trash" ? undefined : Date.now() })} /></span></Tooltip>
-                  <Tooltip content="导出"><span><Button theme="borderless" icon={<Export />} aria-label={`导出${project.name}`} onClick={() => exportProject(project)} /></span></Tooltip>
-                  <Dropdown trigger="click" position="bottomRight" render={<Dropdown.Menu>
-                    <Dropdown.Item onClick={() => openProject(project.id)}>打开项目</Dropdown.Item>
-                    <Dropdown.Item onClick={() => { setDraft(project.name); setDialog({ type: "rename", project }); }}>重命名</Dropdown.Item>
-                    <Dropdown.Item onClick={() => { setDraft(project.folder ?? ""); setDialog({ type: "move", project }); }}>移动到文件夹</Dropdown.Item>
-                    <Dropdown.Item onClick={() => {
-                      try { const copy = createProject(`${project.name} 副本`, project.template);
-                        persistScene(copy.id, readScene(project.id) ?? []);persistEditorSettings(copy.id,readEditorSettings(project.id));persistBoardSize(copy.id,readBoardSize(project.id)); update(copy.id, { thumbnail: project.thumbnail });
-                      } catch { Toast.error("复制失败"); }
-                    }}>复制项目</Dropdown.Item>
-                  </Dropdown.Menu>}><span><Button theme="borderless" icon={<More />} aria-label={`${project.name}更多设置`} /></span></Dropdown>
+                  <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm"
+                    aria-label={`${section === "trash" ? "恢复" : "删除"}${project.name}`}
+                    onClick={() => update(project.id, { trashedAt: section === "trash" ? undefined : Date.now() })} />}>{section === "trash" ? <Refresh /> : <Delete />}</TooltipTrigger>
+                    <TooltipContent>{section === "trash" ? "恢复" : "移入回收站"}</TooltipContent></Tooltip>
+                  <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm"
+                    aria-label={`导出${project.name}`} onClick={() => exportProject(project)} />}><Export /></TooltipTrigger><TooltipContent>导出</TooltipContent></Tooltip>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" aria-label={`${project.name}更多设置`} />}><More /></DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => openProject(project.id)}>打开项目</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => { setDraft(project.name); setDialog({ type: "rename", project }); }}>重命名</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => { setDraft(project.folder ?? ""); setDialog({ type: "move", project }); }}>移动到文件夹</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => {
+                        try { const copy = createProject(`${project.name} 副本`, project.template);
+                          persistScene(copy.id, readScene(project.id) ?? []);persistEditorSettings(copy.id,readEditorSettings(project.id));persistBoardSize(copy.id,readBoardSize(project.id)); update(copy.id, { thumbnail: project.thumbnail });
+                        } catch { Toast.error("复制失败"); }
+                      }}>复制项目</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </header>
               <div className={`project-thumbnail ${section !== "trash" ? "is-openable" : ""}`} role={section !== "trash" ? "button" : undefined}
@@ -185,7 +235,7 @@ export default function HomePage() {
               <footer><span className="project-card-tag">{project.folder || "+ 添加标签"}</span>
                 <span className="project-footer-actions">
                   {project.publishedAt && <span className="published-badge" title={`发布于 ${new Date(project.publishedAt).toLocaleString("zh-CN")}`}><i aria-hidden="true" />已发布</span>}
-                  <Button theme="borderless" icon={<Send />} onClick={() => setPublishing(project)}>发布</Button>
+                  <Button variant="ghost" onClick={() => setPublishing(project)}><Send />发布</Button>
                 </span>
               </footer>
             </article>)}
@@ -195,31 +245,47 @@ export default function HomePage() {
       </main>
     </div>
     {creating && <CreateProjectModal key={templateId} visible onClose={() => setCreating(false)} onCreate={newProject} initialTemplate={templateId} />}
-    <Modal visible={Boolean(dialog)} title={dialog?.type === "folder" ? "新建文件夹" : dialog?.type === "move" ? "移动到文件夹" : "重命名项目"}
-      onCancel={() => setDialog(null)} okText="确定" cancelText="取消" width={420} cancelButtonProps={{ autoFocus: false }} onOk={() => {
-        if (!draft.trim() && dialog?.type !== "move") return;
-        if (dialog?.type === "folder") {
-          if (folders.includes(draft.trim())) { Toast.warning("文件夹已存在"); return; }
-          const next = [...folders, draft.trim()]; localStorage.setItem("dw_folders", JSON.stringify(next)); setFolders(next);
-        } else if (dialog?.project) update(dialog.project.id, dialog.type === "move" ? { folder: draft || undefined } : { name: draft.trim() });
-        setDialog(null);
-      }}>
-      {dialog?.type === "move" ? <Select value={draft} style={{ width: "100%" }} onChange={(value) => setDraft(String(value))}
-        optionList={[{ value: "", label: "我的项目（根目录）" }, ...folders.map((value) => ({ value, label: value }))]} />
-        : <Input autoFocus aria-label="名称" value={draft} onChange={setDraft} maxLength={50} placeholder="请输入名称" />}
-    </Modal>
-    <Modal title="发布项目" visible={Boolean(publishing)} onCancel={() => setPublishing(null)} footer={null} width={440}>
-      <p className="publish-description">当前项目保存在本地工作区。发布是本机标记，发布后可在项目卡片「全屏查看」打开发布成品；发布包可将成品部署到任意静态服务器。</p>
-      <div className="publish-actions">
-        <Button icon={<Export />} onClick={() => publishing && exportProject(publishing)}>导出项目文件</Button>
-        <Button icon={<Box />} onClick={() => publishing && exportPublish(publishing)}>导出发布包</Button>
-        <Button icon={<LinkOut />} onClick={() => publishing && openViewer(publishing.id)}>打开发布页</Button>
-        {publishing && <Button theme="solid" icon={<Send />} onClick={() => {
-          update(publishing.id, publishing.publishedAt ? { publishedAt: undefined } : { publishedAt: Date.now() });
-          setPublishing(null);
-        }}>{publishing.publishedAt ? "取消发布" : "发布"}</Button>}
-      </div>
-    </Modal>
+    <Dialog open={Boolean(dialog)} onOpenChange={(open) => { if (!open) setDialog(null); }}>
+      <DialogContent className="sm:max-w-[420px]!">
+        <DialogHeader><DialogTitle>{dialog?.type === "folder" ? "新建文件夹" : dialog?.type === "move" ? "移动到文件夹" : "重命名项目"}</DialogTitle></DialogHeader>
+        {dialog?.type === "move" ? <Select value={draft} items={[{ value: "", label: "我的项目（根目录）" }, ...folders.map((value) => ({ value, label: value }))]}
+          onValueChange={(value) => setDraft(String(value))}>
+          <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">我的项目（根目录）</SelectItem>
+            {folders.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
+          </SelectContent>
+        </Select>
+          : <Input autoFocus aria-label="名称" value={draft} maxLength={50} placeholder="请输入名称"
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => event.key === "Enter" && submitDialog()} />}
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setDialog(null)}>取消</Button>
+          <Button onClick={submitDialog}>确定</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    <Dialog open={Boolean(publishing)} onOpenChange={(open) => { if (!open) setPublishing(null); }}>
+      <DialogContent className="sm:max-w-[440px]!">
+        <DialogHeader><DialogTitle>发布项目</DialogTitle></DialogHeader>
+        <p className="publish-description">当前项目保存在本地工作区。发布是本机标记，发布后可在项目卡片「全屏查看」打开发布成品；发布包可将成品部署到任意静态服务器。</p>
+        <div className="publish-actions">
+          <Button variant="ghost" onClick={() => publishing && exportProject(publishing)}><Export />导出项目文件</Button>
+          <Button variant="ghost" onClick={() => publishing && exportPublish(publishing)}><Box />导出发布包</Button>
+          <Button variant="ghost" onClick={() => publishing && openViewer(publishing.id)}><LinkOut />打开发布页</Button>
+          {publishing && <Button onClick={() => {
+            update(publishing.id, publishing.publishedAt ? { publishedAt: undefined } : { publishedAt: Date.now() });
+            setPublishing(null);
+          }}><Send />{publishing.publishedAt ? "取消发布" : "发布"}</Button>}
+        </div>
+      </DialogContent>
+    </Dialog>
+    <Dialog open={workspaceInfo} onOpenChange={setWorkspaceInfo}>
+      <DialogContent className="sm:max-w-[400px]!">
+        <DialogHeader><DialogTitle>本地工作区</DialogTitle></DialogHeader>
+        <p className="text-sm leading-relaxed text-muted-foreground">项目与场景保存在当前浏览器，可导出 JSON 文件备份和迁移。</p>
+      </DialogContent>
+    </Dialog>
     <input ref={fileRef} type="file" accept=".json,application/json" hidden onChange={async (event) => {
       const file = event.target.files?.[0]; if (!file) return;
       try {
