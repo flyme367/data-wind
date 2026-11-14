@@ -8,14 +8,6 @@ button, input { font: inherit; }
 button { cursor: pointer; }
 a { color: inherit; text-decoration: none; }
 button:focus-visible, a:focus-visible { outline: 2px solid #1a3bb7; outline-offset: 3px; }
-html.dark {
-  --semi-color-primary: #1a3bb7; --semi-color-primary-hover: #2750d6;
-  --semi-color-primary-active: #142e94; --semi-color-bg-0: var(--background);
-  --semi-color-bg-1: #1f1f1f; --semi-color-bg-2: var(--border); --semi-color-bg-3: #333;
-  --semi-color-border: #454545; --semi-color-text-0: #dedede; --semi-color-text-1: #c7c7c7;
-  --semi-color-text-2: #929292; --semi-color-text-3: #6c6c6c;
-  --semi-border-radius-small: 2px; --semi-border-radius-medium: 3px;
-}
 /* 输入类控件：Input/Textarea 原生元素 + InputGroup 包裹壳 + Select 触发器，统一暗色平底样式 */
 html.dark :is([data-slot="input"], [data-slot="textarea"], [data-slot="input-group"], [data-slot="select-trigger"]) { background: var(--card); border: 1px solid #4b4c4e; border-radius: 0; }
 html.dark [data-slot="input"]:focus, html.dark [data-slot="textarea"]:focus, html.dark [data-slot="input-group"]:focus-within, html.dark [data-slot="select-trigger"]:focus { border-color: #1a3bb7; }
@@ -120,7 +112,7 @@ html.dark [data-slot="button"][data-variant="ghost"]:hover { background: #ffffff
 .template-create-form p { display: flex; justify-content: space-between; color: #999; font-size: 12px; }
 .template-create-form label { display: block; font-size: 13px; margin-bottom: 6px; }
 .template-create-form > div:last-child { display: flex; justify-content: flex-end; gap: 12px; margin-top: 18px; }
-.publish-description { color: var(--semi-color-text-2); line-height: 1.8; font-size: 13px; margin-bottom: 24px; }
+.publish-description { color: var(--muted-foreground); line-height: 1.8; font-size: 13px; margin-bottom: 24px; }
 .publish-actions { display: flex; justify-content: flex-end; gap: 12px; }
 .login-page { height: 100dvh; display: flex; background: white; color: #26282d; }
 .login-art { position: relative; width: 40%; background: #f2f3f5 url('/reference/login-side.webp') center center/cover no-repeat; }
@@ -203,7 +195,7 @@ kbd { margin-left: 24px; font: 11px monospace; color: #777; }
 .editor-asset-rail .asset-rail-search-trigger:hover { color: #fff; background: var(--border); }
 /* 3D 态搜索按钮与相邻分类项同款：52px 行高、橙色图标、nav 式悬停，按下呈现选中橙 */
 .editor-asset-rail.is-3d .asset-rail-search-trigger { height: 52px; color: #e5ac72; }
-.editor-asset-rail.is-3d .asset-rail-search-trigger:hover { color: #e5ac72; background: var(--semi-color-fill-0); }
+.editor-asset-rail.is-3d .asset-rail-search-trigger:hover { color: #e5ac72; background: var(--accent); }
 .editor-asset-rail.is-3d .asset-rail-search-trigger:active { color: #fff0dd; background: #c66613; }
 .asset-rail-count { font-style: normal; font-size: 14px; line-height: 1; }
 /* 山海鲸式素材库浮层：挂在 rail 右缘盖在画布上层，展开不再挤压 stage（rail 与 drawer 由 TSX 的 .editor-asset-column 包裹） */

@@ -8,12 +8,6 @@ dependencies:
   '@fontsource-variable/figtree':
     specifier: ^5.3.0
     version: 5.3.0
-  '@fontsource-variable/geist':
-    specifier: ^5.3.0
-    version: 5.3.0
-  '@fontsource-variable/geist-mono':
-    specifier: ^5.3.0
-    version: 5.3.0
   '@icon-park/react':
     specifier: ^1.4.2
     version: 1.4.2(react-dom@19.3.1)(react@19.3.1)
@@ -41,9 +35,6 @@ dependencies:
   mpegts.js:
     specifier: ^1.8.2
     version: 1.8.2
-  next-themes:
-    specifier: ^0.4.6
-    version: 0.4.6(react-dom@19.3.1)(react@19.3.1)
   pdfjs-dist:
     specifier: ^6.5.438
     version: 6.5.438
@@ -459,14 +450,6 @@ packages:
 
   /@fontsource-variable/figtree@5.3.0:
     resolution: {integrity: sha512-VRVodD7OiG7apQwE8/2fMjaqpY/a0qRJqL5HtYj8CKIVps+9amaFcdfKmDIf7iqYQx6iPLlArVXAfKeIZmVcNQ==}
-    dev: false
-
-  /@fontsource-variable/geist-mono@5.3.0:
-    resolution: {integrity: sha512-vBbuwDEo9AkrqADMXOrlAR3DFcJi4/JxeuU43FoiQERnNwsfXNnvxvReZG02cQKmyk4DZkZdBZX3oTDvy2zBAw==}
-    dev: false
-
-  /@fontsource-variable/geist@5.3.0:
-    resolution: {integrity: sha512-j0m+vLQuG5XAYoHtGCVu0spvlGreR3EzpECUVzkFmI1mTVnAO38l/NEPDCFgZ177JxzYJCLSmTQibIiYPilGrA==}
     dev: false
 
   /@icon-park/react@1.4.2(react-dom@19.3.1)(react@19.3.1):
@@ -3750,16 +3733,6 @@ packages:
     resolution: {integrity: sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg==}
     engines: {node: '>= 0.6'}
     dev: true
-
-  /next-themes@0.4.6(react-dom@19.3.1)(react@19.3.1):
-    resolution: {integrity: sha512-pZvgD5L0IEvX5/9GWyHMf3m8BKiVQwsCMHfoFosXtXBMnaS0ZnIJ9ST4b4NqLVKDEm8QBxoNNGNaBv2JNF6XNA==}
-    peerDependencies:
-      react: ^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc
-      react-dom: ^16.8 || ^17 || ^18 || ^19 || ^19.0.0-rc
-    dependencies:
-      react: 19.3.1
-      react-dom: 19.3.1(react@19.3.1)
-    dev: false
 
   /node-int64@0.4.0:
     resolution: {integrity: sha512-O5lz91xSOeoXP6DulyHfllpq+Eg00MWitZIbtPfoSEvqIHdl5gfcY6hYzDWnj0qD5tz52PI08u9qUvSVeUBeHw==}
