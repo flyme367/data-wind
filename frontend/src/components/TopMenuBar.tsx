@@ -9,7 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Toast } from "@/lib/toast";
 import { AdjacentItem, Data, Click, Cube, Send, FullScreen, Left, Helpcenter } from "@icon-park/react";
 import { getState, setState, useStore } from "../state/store";
@@ -161,7 +161,7 @@ export default function TopMenuBar({ projectName, projectId, editing, setEditing
     </DropdownMenuSub>;
 
   return <header className="editor-header">
-    <Tooltip content="返回工作台"><TooltipTrigger render={<Button variant="ghost" size="icon-sm" aria-label="返回工作台" onClick={goHome} />}><Left /></TooltipTrigger></Tooltip>
+    <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm" aria-label="返回工作台" onClick={goHome} />}><Left /></TooltipTrigger><TooltipContent>返回工作台</TooltipContent></Tooltip>
     <Menu label="项目" icon={<AdjacentItem />}>
       <DropdownMenuItem onClick={save}>保存项目 <kbd>⌘ S</kbd></DropdownMenuItem>
       <DropdownMenuItem onClick={saveAs}>另存为...</DropdownMenuItem>

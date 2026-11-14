@@ -213,7 +213,7 @@ export default function InteractionEditor({ node }: { node: SceneNode | null }) 
     <Button className="w-full" size="sm" disabled={locked} onClick={openAdd}>＋ 添加交互</Button>
 
     <Dialog open={visible} onOpenChange={(open) => { if (!open) setVisible(false); }}>
-      <DialogContent showCloseButton={false} className="interaction-rule-layer interaction-rule-modal max-w-[380px]">
+      <DialogContent showCloseButton={false} className="interaction-rule-layer interaction-rule-modal sm:max-w-[380px]">
         <DialogHeader><DialogTitle>{editingId ? "编辑交互" : "添加交互"}</DialogTitle></DialogHeader>
       <div className="interaction-form">
         <section className="interaction-form-section">
@@ -324,7 +324,7 @@ export default function InteractionEditor({ node }: { node: SceneNode | null }) 
     </Dialog>
 
     <Dialog open={conditionVisible} onOpenChange={(open) => { if (!open) setConditionVisible(false); }}>
-      <DialogContent className="max-w-[440px]">
+      <DialogContent className="sm:max-w-[440px]">
         <DialogHeader><DialogTitle>数据条件</DialogTitle></DialogHeader>
         <div className="interaction-form">
           <Field label="数据源"><SelectField label="条件数据源" value={conditionDraft.sourceId} options={dataSources}

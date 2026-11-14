@@ -100,7 +100,7 @@ function ModelCanvas({ scene, label, selected, onSelect }: {
     {onSelect && <div className="kit-model-preview-toolbar">
       <Select aria-label="预览视角" value={String(cameraIndex)} disabled={!frame?.instances.length}
         onValueChange={value => typeof value === "string" && setCameraIndex(Number(value))}>
-        <SelectTrigger size="sm" className="w-36"><SelectValue /></SelectTrigger>
+        <SelectTrigger size="sm" className="w-full"><SelectValue /></SelectTrigger>
         <SelectContent>{frame?.cameras.map((item, index) =>
           <SelectItem key={index} value={String(index)}>{item.name}</SelectItem>)}</SelectContent>
       </Select>
@@ -148,7 +148,7 @@ export default function KitModelPreview({ source, label, pieces }: {
   return <>
     <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>预览模型几何</Button>
     {open && <Dialog open onOpenChange={(next) => { if (!next) setOpen(false); }}>
-      <DialogContent className="max-w-[760px]">
+      <DialogContent className="sm:max-w-[760px]">
         <DialogHeader><DialogTitle>{label}</DialogTitle></DialogHeader>
         <ModelCanvas key={scene.assetKey + scene.textureKey} scene={scene} label={label}/>
       </DialogContent>
@@ -165,7 +165,7 @@ export function KitScenePreview({ pieces, selected, edit, onSelect }: {
   return <>
     <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>预览场景几何</Button>
     {open && <Dialog open onOpenChange={(next) => { if (!next) setOpen(false); }}>
-      <DialogContent className="max-w-[760px]">
+      <DialogContent className="sm:max-w-[760px]">
         <DialogHeader><DialogTitle>三维场景几何</DialogTitle></DialogHeader>
         <ModelCanvas key={scene.assetKey + scene.textureKey} label="场景" scene={scene} selected={selected} onSelect={onSelect}/>
       </DialogContent>

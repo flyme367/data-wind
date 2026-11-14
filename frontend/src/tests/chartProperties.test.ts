@@ -19,62 +19,62 @@ vi.mock("@icon-park/react", () => ({
 // 组件已迁移到 shadcn；测试渲染为静态 markup，这里把用到的 ui 模块整体 stub 成纯 div，
 // 避免 Base UI 弹层/Portal 在 SSR 场景下的行为干扰断言。vi.mock 工厂会被提升，
 // 每个工厂必须自包含（内联 createElement/element），不能引用顶层变量。
-vi.mock("['@/components/ui/button']", async () => {
+vi.mock("@/components/ui/button", async () => {
   const { createElement } = await import("react");
   const element = ({ children }: { children?: React.ReactNode }) => createElement("div", null, children);
   return { Button: element };
 });
-vi.mock("['@/components/ui/badge']", async () => {
+vi.mock("@/components/ui/badge", async () => {
   const { createElement } = await import("react");
   const element = ({ children }: { children?: React.ReactNode }) => createElement("div", null, children);
   return { Badge: element };
 });
-vi.mock("['@/components/ui/collapsible']", async () => {
+vi.mock("@/components/ui/collapsible", async () => {
   const { createElement } = await import("react");
   const element = ({ children }: { children?: React.ReactNode }) => createElement("div", null, children);
-  return { Collapsible, CollapsibleTrigger, CollapsibleContent: element };
+  return { Collapsible: element, CollapsibleTrigger: element, CollapsibleContent: element };
 });
-vi.mock("['@/components/ui/input']", async () => {
+vi.mock("@/components/ui/input", async () => {
   const { createElement } = await import("react");
   const element = ({ children }: { children?: React.ReactNode }) => createElement("div", null, children);
   return { Input: element };
 });
-vi.mock("['@/components/ui/select']", async () => {
+vi.mock("@/components/ui/select", async () => {
   const { createElement } = await import("react");
   const element = ({ children }: { children?: React.ReactNode }) => createElement("div", null, children);
-  return { Select, SelectContent, SelectItem, SelectTrigger, SelectValue: element };
+  return { Select: element, SelectContent: element, SelectItem: element, SelectTrigger: element, SelectValue: element };
 });
-vi.mock("['@/components/ui/switch']", async () => {
+vi.mock("@/components/ui/switch", async () => {
   const { createElement } = await import("react");
   const element = ({ children }: { children?: React.ReactNode }) => createElement("div", null, children);
   return { Switch: element };
 });
-vi.mock("['@/components/ui/textarea']", async () => {
+vi.mock("@/components/ui/textarea", async () => {
   const { createElement } = await import("react");
   const element = ({ children }: { children?: React.ReactNode }) => createElement("div", null, children);
   return { Textarea: element };
 });
-vi.mock("['@/components/ui/dialog']", async () => {
+vi.mock("@/components/ui/dialog", async () => {
   const { createElement } = await import("react");
   const element = ({ children }: { children?: React.ReactNode }) => createElement("div", null, children);
-  return { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle: element };
+  return { Dialog: element, DialogContent: element, DialogFooter: element, DialogHeader: element, DialogTitle: element };
 });
-vi.mock("['@/components/ui/dropdown-menu']", async () => {
+vi.mock("@/components/ui/dropdown-menu", async () => {
   const { createElement } = await import("react");
   const element = ({ children }: { children?: React.ReactNode }) => createElement("div", null, children);
-  return { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger: element };
+  return { DropdownMenu: element, DropdownMenuCheckboxItem: element, DropdownMenuContent: element, DropdownMenuItem: element, DropdownMenuSub: element, DropdownMenuSubContent: element, DropdownMenuSubTrigger: element, DropdownMenuTrigger: element };
 });
-vi.mock("['@/components/ui/radio-group']", async () => {
+vi.mock("@/components/ui/radio-group", async () => {
   const { createElement } = await import("react");
   const element = ({ children }: { children?: React.ReactNode }) => createElement("div", null, children);
-  return { RadioGroup, RadioGroupItem: element };
+  return { RadioGroup: element, RadioGroupItem: element };
 });
-vi.mock("['@/components/ui/slider']", async () => {
+vi.mock("@/components/ui/slider", async () => {
   const { createElement } = await import("react");
   const element = ({ children }: { children?: React.ReactNode }) => createElement("div", null, children);
   return { Slider: element };
 });
-vi.mock("['@/components/ui-ext/number-input']", async () => {
+vi.mock("@/components/ui-ext/number-input", async () => {
   const { createElement } = await import("react");
   const element = ({ children }: { children?: React.ReactNode }) => createElement("div", null, children);
   return { NumberInput: element };

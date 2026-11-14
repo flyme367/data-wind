@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, type ComponentProps, type ReactNode } from "react";
-import { Avatar, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -37,12 +38,13 @@ const sortOptions = [
 function SearchInput({ icon, clearLabel, value, onValueChange, className, ...rest }: {
   icon: ReactNode; clearLabel: string; value: string; onValueChange: (value: string) => void;
 } & Omit<ComponentProps<"input">, "value" | "onChange">) {
-  return <div className={className}>
-    {icon}
-    <Input className="pl-8 pr-8" {...rest} value={value} onChange={(event) => onValueChange(event.target.value)} />
-    {value && <button aria-label={clearLabel} className="absolute top-1/2 right-1.5 -translate-y-1/2 border-0 bg-transparent text-muted-foreground"
-      onClick={() => onValueChange("")}>×</button>}
-  </div>;
+  return <InputGroup className={className}>
+    <InputGroupAddon align="inline-start">{icon}</InputGroupAddon>
+    <InputGroupInput {...rest} value={value} onChange={(event) => onValueChange(event.target.value)} />
+    {value && <InputGroupAddon align="inline-end">
+      <InputGroupButton variant="ghost" size="icon-xs" aria-label={clearLabel} onClick={() => onValueChange("")}>×</InputGroupButton>
+    </InputGroupAddon>}
+  </InputGroup>;
 }
 
 function initialProjects() {
@@ -149,13 +151,13 @@ export default function HomePage() {
     </aside>
     <div className="workbench-body">
       <header className="workbench-header">
-        <SearchInput icon={<Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />}
+        <SearchInput icon={<Search className="size-4 text-muted-foreground" />}
           clearLabel="清空模板搜索" className="relative min-w-[200px] flex-1" placeholder="输入关键词搜索模板" aria-label="搜索模板"
           value={templateQuery} onValueChange={setTemplateQuery}
           onKeyDown={(event) => event.key === "Enter" && setSection("assets")} />
         <DropdownMenu>
           <DropdownMenuTrigger render={<button className="workspace-account" />}>
-            <Avatar size="sm"><AvatarImage src="/reference/default-avatar-classic-gray.92ab041c.svg" /></Avatar>
+            <Avatar size="sm"><AvatarImage src="/reference/default-avatar-classic-gray.92ab041c.svg" /><AvatarFallback>本</AvatarFallback></Avatar>
             <span>本地工作区<small>本地项目</small></span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -186,7 +188,7 @@ export default function HomePage() {
               <SelectTrigger className="w-[128px] shrink-0" size="sm" aria-label="项目排序"><SelectValue /></SelectTrigger>
               <SelectContent>{sortOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
             </Select>
-              <SearchInput icon={<Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />}
+              <SearchInput icon={<Search className="size-4 text-muted-foreground" />}
                 clearLabel="清空项目搜索" className="relative w-[310px]" placeholder="搜索项目" aria-label="搜索项目"
                 value={query} onValueChange={setQuery} /></div>
           </div>

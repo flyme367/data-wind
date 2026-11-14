@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Cube, Layers, Folder, Sun, Camera, PreviewOpen, PreviewClose, Lock, Unlock, Delete, Filter } from "@icon-park/react";
 import { getSceneBridge, type SceneSnapshot } from "../workers/bridge";
 import { openSceneContextMenu } from "../state/contextMenu";
@@ -168,8 +168,9 @@ export function SceneTreePanel({ snapshot, editing, setEditing, boardName, board
       <Layers /><span className="scene-tree-title">{editing ? "组件图层" : "看板图层"}</span>
       <DropdownMenu>
         <DropdownMenuTrigger render={<span />}>
-          <Tooltip content="过滤图层类型">
+          <Tooltip>
             <TooltipTrigger render={<Button variant="ghost" size="icon-sm" aria-label="过滤图层类型" />}><Filter /></TooltipTrigger>
+            <TooltipContent>过滤图层类型</TooltipContent>
           </Tooltip>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="scene-filter-dropdown scene-filter-menu w-auto">
@@ -200,9 +201,9 @@ export function SceneTreePanel({ snapshot, editing, setEditing, boardName, board
           <DropdownMenuItem onClick={()=>deleteSelection()}>删除选中</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <Tooltip content={selected.visible ? "隐藏" : "显示"}><TooltipTrigger render={<Button size="sm" variant="ghost" aria-label="切换对象可见性" onClick={() => getSceneBridge().post({ type: "toggleVisible", id: selected.id })} />}>{selected.visible ? <PreviewOpen /> : <PreviewClose />}</TooltipTrigger></Tooltip>
-      <Tooltip content={selected.locked ? "解锁" : "锁定"}><TooltipTrigger render={<Button size="sm" variant="ghost" aria-label="切换对象锁定" onClick={() => getSceneBridge().post({ type: "toggleLocked", id: selected.id })} />}>{selected.locked ? <Lock /> : <Unlock />}</TooltipTrigger></Tooltip>
-      <Tooltip content={selected.locked ? "请先解锁对象" : "删除对象（可撤销）"}><TooltipTrigger render={<Button size="sm" variant="ghost" disabled={selected.locked} aria-label="删除选中对象" onClick={() => deleteSceneObject(selected.id)} />}><Delete /></TooltipTrigger></Tooltip>
+      <Tooltip><TooltipTrigger render={<Button size="sm" variant="ghost" aria-label="切换对象可见性" onClick={() => getSceneBridge().post({ type: "toggleVisible", id: selected.id })} />}>{selected.visible ? <PreviewOpen /> : <PreviewClose />}</TooltipTrigger><TooltipContent>{selected.visible ? "隐藏" : "显示"}</TooltipContent></Tooltip>
+      <Tooltip><TooltipTrigger render={<Button size="sm" variant="ghost" aria-label="切换对象锁定" onClick={() => getSceneBridge().post({ type: "toggleLocked", id: selected.id })} />}>{selected.locked ? <Lock /> : <Unlock />}</TooltipTrigger><TooltipContent>{selected.locked ? "解锁" : "锁定"}</TooltipContent></Tooltip>
+      <Tooltip><TooltipTrigger render={<Button size="sm" variant="ghost" disabled={selected.locked} aria-label="删除选中对象" onClick={() => deleteSceneObject(selected.id)} />}><Delete /></TooltipTrigger><TooltipContent>{selected.locked ? "请先解锁对象" : "删除对象（可撤销）"}</TooltipContent></Tooltip>
     </div>}
     <Dialog open={Boolean(rename)} onOpenChange={(open) => { if (!open) setRename(null); }}>
       <DialogContent className="sm:max-w-[360px]!">

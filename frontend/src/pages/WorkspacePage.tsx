@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Notification, Toast } from "@/lib/toast";
 import { AllApplication, ApplicationMenu, ChartHistogram, Cube, CubeThree, Earth, Edit, FolderOpen, FullScreen, Keyboard, Layers, MapTwo, Monitor, Paint, Play,
@@ -706,16 +706,18 @@ export default function WorkspacePage({ projectId }: { projectId: string }) {
               </div>
               <div className="asset-panel-main">
                 <header className="asset-panel-header">
-                  <RadioGroup className="asset-theme-tabs flex" aria-label="素材库切换" value={assetTab}
-                    onValueChange={(next) => {
-                      setAssetTab(next as typeof assetTab);
+                  <ToggleGroup className="asset-theme-tabs flex" aria-label="素材库切换" value={[assetTab]}
+                    onValueChange={(values) => {
+                      const next = values[0] as typeof assetTab | undefined;
+                      if (!next) return;
+                      setAssetTab(next);
                       if (next === "light") setKitFamilyId("light");
                       if (next === "dark" && assetTab === "light") setKitFamilyId("free");
                     }}>
-                    <label className="flex items-center gap-1.5"><RadioGroupItem value="dark" /><span>深色</span></label>
-                    <label className="flex items-center gap-1.5"><RadioGroupItem value="light" /><span>浅色</span></label>
-                    <label className="flex items-center gap-1.5"><RadioGroupItem value="asset" /><span>资产库</span></label>
-                  </RadioGroup>
+                    <ToggleGroupItem value="dark">深色</ToggleGroupItem>
+                    <ToggleGroupItem value="light">浅色</ToggleGroupItem>
+                    <ToggleGroupItem value="asset">资产库</ToggleGroupItem>
+                  </ToggleGroup>
                   <div className="asset-panel-actions">
                     <Tooltip><TooltipTrigger render={<Button variant="ghost" size="icon-sm"
                       aria-label="刷新素材" onClick={() => setRefreshKey((key) => key + 1)} />}><Refresh /></TooltipTrigger><TooltipContent>刷新素材</TooltipContent></Tooltip>
