@@ -4,7 +4,6 @@ import { defineConfig, type Plugin } from "vite";
 import path from "node:path";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import SemiPlugin from "@douyinfe/semi-vite-plugin";
 
 /** 智慧园区 demo 的本地模拟数据源:随机游走让指标/图表像真实传感数据一样缓慢变化(仅 dev)。 */
 function parkMockPlugin(): Plugin {
@@ -68,7 +67,7 @@ export default defineConfig({
   },
   // 底部状态栏展示的应用版本（来自 package.json，编译期内联）
   define: { __DW_VERSION__: JSON.stringify(version) },
-  plugins: [react(), tailwindcss(), SemiPlugin({ cssLayer: true }), parkMockPlugin()],
+  plugins: [react(), tailwindcss(), parkMockPlugin()],
   server: {
     port: 5173,
     host: "127.0.0.1",

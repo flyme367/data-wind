@@ -1,11 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-// Semi React 19 适配：必须位于任何 Semi 组件 import 之前
-// https://semi.design/zh-CN/ecosystem/react19
-import "@douyinfe/semi-ui/react19-adapter";
 import "@icon-park/react/styles/index.css";
-/* 顺序关键：semi-layer 必须在 tailwind.css 与任何 Semi 组件 import 之前 */
-import "./styles/semi-layer.css";
 import "./styles/tailwind.css";
 import "./styles/app.css";
 import App from "./App";
