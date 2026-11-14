@@ -1,0 +1,35 @@
+/* ============================================================
+   全局设计设置（唯一入口：改主配色 / 改字体只动这个文件）
+   基准参考：Book Appointment 主按钮蓝 + 侧边栏黑色阶梯（shadcn dashboard 风格）
+   下游：tailwind.css 的 shadcn token 全部 var() 引用此处变量
+   ============================================================ */
+:root {
+  /* —— 字体 —— */
+  /* 全局 UI 字体：拉丁/数字 Figtree，中文回退苹方/雅黑 */
+  --app-font-sans: 'Figtree Variable', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  /* 代码块 / 调试控制台 / 快捷键徽标专用等宽 */
+  --app-font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+
+  /* —— 主配色：品牌蓝（按钮 / 选中 / 焦点） —— */
+  --app-blue: #1a3bb7;        /* 主蓝：primary / ring / 图表主色 */
+  --app-blue-hover: #2750d6;  /* 悬停 / focus 边框 */
+  --app-blue-active: #142e94; /* 按下 / 最深一档（chart-5） */
+  --app-blue-soft: #3a5cd0;   /* 浅一档（侧栏主色 / chart-2） */
+  --app-blue-soft-2: #4a6fe3; /* 浅两档（chart-1） */
+  --app-blue-mid: #2a49bb;    /* 中间档（chart-3） */
+
+  /* —— 黑色阶梯（页面 → 面板 → 选中/填充 → 悬停/边框） —— */
+  --app-black-0: #171717; /* 页面底 / 侧栏 */
+  --app-black-1: #1c1c1c; /* 卡片 / 弹窗 / 面板 */
+  --app-black-2: #262626; /* 选中 pill / 输入填充 / muted */
+  --app-black-3: #2e2e2e; /* 悬停 / 边框 / 输入边 */
+
+  /* —— 文本 —— */
+  --app-text: #f5f6f7;
+  --app-text-muted: #a1a1aa;
+
+  /* —— 语义色（非品牌） —— */
+  --app-success: #3bb346;
+  --app-warning: #f5a623;
+  --app-danger: #e5484d;
+}

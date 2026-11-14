@@ -7,7 +7,7 @@ body { overflow: hidden; }
 button, input { font: inherit; }
 button { cursor: pointer; }
 a { color: inherit; text-decoration: none; }
-button:focus-visible, a:focus-visible { outline: 2px solid #1a3bb7; outline-offset: 3px; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--app-blue); outline-offset: 3px; }
 /* 输入类控件：Input/Textarea 原生元素 + InputGroup 包裹壳 + Select 触发器，统一暗色平底样式 */
 html.dark :is([data-slot="input"], [data-slot="textarea"], [data-slot="input-group"], [data-slot="select-trigger"]) { background: var(--card); border: 1px solid var(--border); border-radius: 0; }
 html.dark [data-slot="input"]:focus, html.dark [data-slot="textarea"]:focus, html.dark [data-slot="input-group"]:focus-within, html.dark [data-slot="select-trigger"]:focus { border-color: #1a3bb7; }
@@ -143,7 +143,7 @@ html.dark [data-slot="button"][data-variant="ghost"]:hover { background: var(--a
 .editor-page .editor-header .editor-title { flex: 1; min-width: 0; text-align: center; font-size: 14px; font-weight: 600; height: 36px; display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding: 0 8px; }
 .editor-header-actions { display: flex; align-items: center; gap: 4px; }
 .editor-header-actions [data-slot="button"] { font-size: 12px; height: 26px; }
-kbd { margin-left: 24px; font: 11px monospace; color: #777; }
+kbd { margin-left: 24px; font: 11px var(--app-font-mono); color: #777; }
 /* 编辑器骨架：Layout 壳已移除，直接在原生元素上做 flex */
 .editor-body { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; overflow: hidden; }
 .editor-body-row { flex: 1; min-height: 0; display: flex; position: relative; }
@@ -220,9 +220,12 @@ kbd { margin-left: 24px; font: 11px monospace; color: #777; }
 @keyframes asset-panel-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(-16px); } }
 .asset-overlay-panel, .editor-asset-drawer { animation: asset-panel-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both; transition: width 240ms cubic-bezier(0.16, 1, 0.3, 1); }
 .asset-overlay-panel.is-closing, .editor-asset-drawer.is-closing { animation: asset-panel-out 180ms cubic-bezier(0.4, 0, 1, 1) both; pointer-events: none; }
-/* 面板内两列（分类 rail + 内容区）轻微错峰浮入，增强展开层次感 */
-.asset-overlay-panel > .asset-panel-rail, .asset-overlay-panel > .asset-panel-main { animation: asset-panel-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-.asset-overlay-panel > .asset-panel-main { animation-delay: 40ms; }
+/* 面板内两列（分类 rail + 内容区）轻微错峰浮入，增强展开层次感；
+   :not(.is-closing) 门控——收起经 layout effect 重挂载时子列不得重播入场动画，
+   否则子列 opacity 从 0 爬升与父级淡出相乘，收起帧出现「闪现→淡出」残影 */
+.asset-overlay-panel:not(.is-closing) > .asset-panel-rail,
+.asset-overlay-panel:not(.is-closing) > .asset-panel-main { animation: asset-panel-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.asset-overlay-panel:not(.is-closing) > .asset-panel-main { animation-delay: 40ms; }
 @media (prefers-reduced-motion: reduce) {
   .asset-overlay-panel, .editor-asset-drawer, .asset-overlay-panel > .asset-panel-rail, .asset-overlay-panel > .asset-panel-main { animation: none; }
   .asset-overlay-panel, .editor-asset-drawer { transition: none; }
@@ -233,7 +236,8 @@ kbd { margin-left: 24px; font: 11px monospace; color: #777; }
 .asset-rail-search [data-slot="input"] { background: var(--secondary); border-color: var(--border); }
 .asset-rail-expanded { flex: 1; min-height: 0; overflow-y: auto; }
 /* 展开态 rail 分类项同样是原生 button（nav > div.asset-rail-nav > button） */
-.asset-rail-expanded button { display: flex; align-items: center; height: 52px; margin: 0; padding: 0 10px 0 14px; border: 0; border-radius: 0; background: none; color: #cccccc; font-size: 14px; }
+/* button 原生 width:auto=fit-content，不补 width:100% 会缩成内容宽（选中蓝条只有半行、计数挤在文字边） */
+.asset-rail-expanded button { display: flex; align-items: center; width: 100%; height: 52px; margin: 0; padding: 0 10px 0 14px; border: 0; border-radius: 0; background: none; color: #cccccc; font-size: 14px; }
 .asset-rail-expanded button > .i-icon { color: #cccccc; font-size: 18px; }
 /* label 层自己居中，避免顶在行首与垂直居中的图标错位 */
 .asset-rail-expanded .asset-rail-label { flex: 1; min-width: 0; display: flex; align-items: center; }
@@ -437,7 +441,7 @@ kbd { margin-left: 24px; font: 11px monospace; color: #777; }
 .properties-tab { display: flex; align-items: center; justify-content: center; flex: 1; min-width: 0; padding: 0 4px; border: 0; background: transparent; color: #c7cacd; font-size: 14px; white-space: nowrap; cursor: pointer; }
 .properties-tab:hover { color: #e8eaec; }
 .properties-tab.is-active { color: #f2f3f4; box-shadow: inset 0 -2px 0 #1a3bb7; }
-.properties-tab:focus-visible { position: relative; z-index: 1; outline: 2px solid #1a3bb7; outline-offset: -3px; }
+.properties-tab:focus-visible { position: relative; z-index: 1; outline: 2px solid var(--app-blue); outline-offset: -3px; }
 .properties-tabs .state-dropdown-tag { flex-shrink: 0; max-width: 128px; height: 28px; padding: 0 9px; background: #2e3134 !important; border: 0 !important; border-radius: 3px; color: #dfe1e3 !important; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .properties-tabs .state-dropdown-tag:hover { background: #3a3e42 !important; color: #fff !important; }
 .properties-tabs .state-dropdown-static { cursor: default; height: 28px; padding: 0 9px; background: #2e3134 !important; border: 0 !important; border-radius: 3px; color: #dfe1e3 !important; font-size: 13px; display: inline-flex; align-items: center; }
@@ -493,7 +497,7 @@ kbd { margin-left: 24px; font: 11px monospace; color: #777; }
 .chart-label-tabs button { padding: 7px 0; border: 0; border-bottom: 2px solid transparent; background: none;
   color: #b8bec5; font-size: 12px; cursor: pointer; }
 .chart-label-tabs button[aria-selected="true"] { color: #1a3bb7; border-bottom-color: #1a3bb7; }
-.chart-label-tabs button:focus-visible { outline: 2px solid #1a3bb7; outline-offset: 2px; }
+.chart-label-tabs button:focus-visible { outline: 2px solid var(--app-blue); outline-offset: 2px; }
 .kit-advanced-links { margin: 8px 0 12px; padding: 8px; border: 1px solid #45484d; }
 .kit-advanced-title { margin-bottom: 8px; color: #cbd0d6; font-size: 12px; }
 /* chart-axis-subsections 是 Panels 渲染的 div，子项即各 Collapsible 根 */
