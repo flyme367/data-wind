@@ -94,6 +94,19 @@ export default function WorkspacePage({ projectId }: { projectId: string }) {
   const [kitFamilyId, setKitFamilyId] = useState("free");
   const [refreshKey, setRefreshKey] = useState(0);
   const [assetSearchFocusTick, setAssetSearchFocusTick] = useState(0);
+  // 组件菜单收起动画：关闭后保留浮层 180ms 播完淡出再卸载（assetLeaving 记住原分类供收起帧渲染，
+  // is-closing 期间 pointer-events 关闭）；收起中途重开任意分类立即取消。时长与 app.css .is-closing 动画对应
+  const [assetLeaving, setAssetLeaving] = useState<string | null>(null);
+  const lastAssetCategory = useRef<string | null>(assetCategory);
+  useEffect(() => {
+    const previous = lastAssetCategory.current;
+    lastAssetCategory.current = assetCategory;
+    if (assetCategory) { setAssetLeaving(null); return; }
+    if (!previous) return;
+    setAssetLeaving(previous);
+    const timer = setTimeout(() => setAssetLeaving(null), 180);
+    return () => clearTimeout(timer);
+  }, [assetCategory]);
   useEffect(() => setAssetChip("全部"), [assetCategory, assetTab]);
   const [treeCollapsed, setTreeCollapsed] = useState(false);
   const [libraryExpanded, setLibraryExpanded] = useState(false);
@@ -647,6 +660,8 @@ export default function WorkspacePage({ projectId }: { projectId: string }) {
     boardResize.current = null;
     if (drag.handle.hasPointerCapture(event.pointerId)) drag.handle.releasePointerCapture(event.pointerId);
   };
+  // 收起动画帧：assetCategory 已为 null 但浮层仍在淡出时，用原分类保持面板内容不闪空
+  const shownAssetCategory = assetCategory ?? assetLeaving;
   return <div className={`editor-page ${preview ? "is-preview" : ""}`}>
     {!bootGone && <EditorBootSkeleton projectName={projectName} hiding={bootHiding} />}
     <TopMenuBar projectName={projectName} projectId={projectId} editing={editing} setEditing={changeEditing} preview={preview} setPreview={setPreview} />
@@ -672,11 +687,11 @@ export default function WorkspacePage({ projectId }: { projectId: string }) {
               <span className="asset-rail-label">{category.label}{!editing && <i className="asset-rail-count">{boardAssetCounts[category.label] ?? 0}</i>}</span>
             </button>)}
           </nav>
-          {assetCategory && (editing ? <aside className={`editor-asset-drawer ${libraryExpanded ? "is-expanded" : ""}`}>
-            <AssetLibraryPanel category={assetCategory} libraryExpanded={libraryExpanded}
+          {shownAssetCategory && (editing ? <aside className={`editor-asset-drawer ${libraryExpanded ? "is-expanded" : ""} ${assetLeaving && !assetCategory ? "is-closing" : ""}`}>
+            <AssetLibraryPanel category={shownAssetCategory} libraryExpanded={libraryExpanded}
               onToggleLibrary={() => setLibraryExpanded(!libraryExpanded)} onClose={() => setAssetCategory(null)} />
           </aside>
-            : <section className={`asset-overlay-panel is-${assetTab} ${assetCategory === "套件" ? "is-kit" : ""} ${["拓扑", "套件"].includes(assetCategory) ? "has-family" : ""} ${libraryExpanded ? "is-expanded" : ""}`}>
+            : <section className={`asset-overlay-panel is-${assetTab} ${shownAssetCategory === "套件" ? "is-kit" : ""} ${["拓扑", "套件"].includes(shownAssetCategory) ? "has-family" : ""} ${libraryExpanded ? "is-expanded" : ""} ${assetLeaving && !assetCategory ? "is-closing" : ""}`}>
               <div className="asset-panel-rail">
                 {assetTab !== "asset" && <div className="asset-rail-search-row">
                   <div className="asset-rail-search relative">
@@ -728,9 +743,9 @@ export default function WorkspacePage({ projectId }: { projectId: string }) {
                 </header>
                 <div className="asset-panel-body" key={refreshKey}>
                   {assetTab === "asset" ? <BoardAssetLibrary query={assetQuery} />
-                    : <>{["拓扑", "套件"].includes(assetCategory)
-                      && <AssetFamilyStrip category={assetCategory as "拓扑" | "套件"} chip={assetChip} onChip={setAssetChip} familyId={kitFamilyId} onFamily={setKitFamilyId} />}
-                    <ComponentPalette category={assetCategory} query={assetQuery} chip={assetChip} onChip={setAssetChip} kitFamilyId={kitFamilyId}
+                    : <>{["拓扑", "套件"].includes(shownAssetCategory)
+                      && <AssetFamilyStrip category={shownAssetCategory as "拓扑" | "套件"} chip={assetChip} onChip={setAssetChip} familyId={kitFamilyId} onFamily={setKitFamilyId} />}
+                    <ComponentPalette category={shownAssetCategory} query={assetQuery} chip={assetChip} onChip={setAssetChip} kitFamilyId={kitFamilyId}
                       onKitInsert={() => setAssetCategory(null)} /></>}
                 </div>
               </div>

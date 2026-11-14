@@ -221,6 +221,20 @@ kbd { margin-left: 24px; font: 11px monospace; color: #777; }
 .asset-overlay-panel.has-family { width: 700px; }
 .asset-overlay-panel.is-expanded { width: min(884px, calc(100vw - 232px)); }
 .asset-overlay-panel.has-family.is-expanded { width: min(868px, calc(100vw - 232px)); }
+/* 组件菜单展开/收起动画：浮层自 rail 缘滑入淡入（只动 transform/opacity，不触发内部缩略图重排），
+   收起由 TSX .is-closing 驱动（180ms 后卸载，时长对应 WorkspacePage assetLeaving 定时器），期间禁点击；
+   「展开素材库」宽度切换（716/700 ↔ 884/868）走 width 过渡 */
+@keyframes asset-panel-in { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+@keyframes asset-panel-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(-16px); } }
+.asset-overlay-panel, .editor-asset-drawer { animation: asset-panel-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both; transition: width 240ms cubic-bezier(0.16, 1, 0.3, 1); }
+.asset-overlay-panel.is-closing, .editor-asset-drawer.is-closing { animation: asset-panel-out 180ms cubic-bezier(0.4, 0, 1, 1) both; pointer-events: none; }
+/* 面板内两列（分类 rail + 内容区）轻微错峰浮入，增强展开层次感 */
+.asset-overlay-panel > .asset-panel-rail, .asset-overlay-panel > .asset-panel-main { animation: asset-panel-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.asset-overlay-panel > .asset-panel-main { animation-delay: 40ms; }
+@media (prefers-reduced-motion: reduce) {
+  .asset-overlay-panel, .editor-asset-drawer, .asset-overlay-panel > .asset-panel-rail, .asset-overlay-panel > .asset-panel-main { animation: none; }
+  .asset-overlay-panel, .editor-asset-drawer { transition: none; }
+}
 .asset-panel-rail { width: 184px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--secondary); }
 .asset-rail-search-row { flex-shrink: 0; height: 41px; display: flex; align-items: center; padding: 0 8px 0 6px; }
 .asset-rail-search { flex: 1; }
