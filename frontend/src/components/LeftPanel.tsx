@@ -132,7 +132,7 @@ export function SceneTreePanel({ snapshot, editing, setEditing, boardName, board
     return <div key={key}>
       <div role="treeitem" aria-expanded={hasChildren ? isExpanded : undefined} aria-selected={selectedValue === key || undefined}
         data-key={key} draggable style={{ paddingLeft: depth * 12 }}
-        className={`scene-tree-option group/row flex min-h-7 items-center gap-1 pr-2 ${selectedValue === key ? "bg-[#3789f4] text-white" : ""}`}
+        className={`scene-tree-option group/row flex min-h-7 items-center gap-1 pr-2 ${selectedValue === key ? "bg-primary text-primary-foreground" : ""}`}
         onDragStart={() => { dragId.current = key; }} onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => { e.preventDefault(); const target = scene.find((n) => n.id === key); const id = String(dragId.current);
           if (!scene.some((n) => n.id === id)) return;

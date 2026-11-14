@@ -68,7 +68,7 @@ export function NumberInput({
   };
 
   return (
-    <span className={cn("relative inline-flex w-full items-center", className)}>
+    <span data-slot="number-input" className={cn("relative inline-flex w-full items-center", className)}>
       <Input
         type="text"
         inputMode="decimal"
@@ -86,7 +86,7 @@ export function NumberInput({
           else if (event.key === "Enter") { event.currentTarget.blur(); }
         }}
       />
-      {suffix && <span className="pointer-events-none absolute right-2 text-xs text-muted-foreground">{suffix}</span>}
+      {suffix && <span data-slot="number-input-suffix" className="pointer-events-none absolute right-2 text-xs text-muted-foreground">{suffix}</span>}
     </span>
   );
 }
